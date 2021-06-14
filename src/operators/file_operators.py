@@ -19,7 +19,6 @@ from typing import List, AnyStr, Set
 from shutil import copyfile, move
 from airflow.contrib.hooks.fs_hook import FSHook
 from airflow.models import BaseOperator
-from airflow.utils.decorators import apply_defaults
 from datetime import datetime
 
 # You can also make this format a parameter in the Operator, for example
@@ -98,7 +97,6 @@ class PredictableLocationToFinalLocationOperator(BaseOperator):
     Picks up a file from predictable location storage and loads/transfers the results to 
     a target system (in this case another directory, but it could be anywhere).
     """
-    @apply_defaults
     def __init__(self,
                  src_conn_id,
                  dst_conn_id,

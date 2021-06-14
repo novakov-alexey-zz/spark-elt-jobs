@@ -1,18 +1,14 @@
 from __future__ import print_function
 import airflow
-from datetime import datetime, timedelta
+from airflow.utils.dates import days_ago
+from datetime import timedelta
 from operators.file_operators import FileToPredictableLocationOperator
 from operators.file_operators import PredictableLocationToFinalLocationOperator
 from operators.file_operators import CheckReceivedFileOperator
 
-
-past_date = datetime.combine(
-    datetime.today() - timedelta(1),
-    datetime.min.time())
-
 args = {
     'owner': 'alexey',
-    'start_date': past_date,
+    'start_date': days_ago(1),
     'provide_context': True
 }
 
