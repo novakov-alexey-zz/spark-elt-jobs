@@ -1,5 +1,20 @@
 from importlib import import_module
 from airflow import DAG
+import json
+import os
+from typing import Any, Dict
+
+
+def load_dag(schedule: Any, default_args: Dict[str, Any], json_filename: str):
+    location = os.path.realpath(os.path.join(
+        os.getcwd(), os.path.dirname(__file__)))
+    filepath = os.path.join(location, json_filename)
+
+    definition = {}
+
+    with open(filepath, 'r') as json_file:
+        definition = json.load(json_file)
+    return create_dag(schedule, default_args, definition)
 
 
 def create_dag(schedule, default_args, definition):
@@ -22,11 +37,10 @@ def create_dag(schedule, default_args, definition):
             for ds_task in downstream_conn:
                 tasks[node_name] >> tasks[ds_task]
 
-    globals()[definition["name"]] = dag
-    return dag
+    return definition["name"], dag    
 
 
 def load_operator(name):
-    """Load operators dynamically"""
+    """Load operator class dynamically"""
     components = name.rpartition('.')
     return getattr(import_module(components[0]), components[-1])
