@@ -13,7 +13,7 @@ args = {
 }
 
 dag = airflow.DAG(
-    'file_ingest',
+    'single_source_ingest',
     schedule_interval='0/10 * * * * *',
     dagrun_timeout=timedelta(minutes=60),
     default_args=args,
@@ -25,14 +25,14 @@ ingest_file = FileToPredictableLocationOperator(
     task_id='ingest_file',
     src_conn_id='fs_local_input',
     dst_conn_id='fs_local_raw_data',
-    file_mask=file_mask,    
+    file_mask=file_mask,
     dag=dag)
 
 check_file = CheckReceivedFileOperator(
     task_id='check_file',
     file_mask=file_mask,
     file_prefixes={"items", "orders", "customers"},
-    xcom_task_id = 'ingest_file',    
+    dst_conn_id='fs_local_raw_data',
     dag=dag)
 
 ingest_file >> check_file

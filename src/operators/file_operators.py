@@ -15,6 +15,10 @@
 import os
 import fnmatch
 import logging
+import itertools
+
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 from typing import List, AnyStr, Set
 from shutil import copyfile, move
 from airflow.contrib.hooks.fs_hook import FSHook
@@ -25,6 +29,12 @@ from datetime import datetime
 # if you expect that you work with different intervals than "@daily".
 # Then you can introduce time components to have a finer grain for file storage.
 DATE_FORMAT = '%Y%m%d'
+
+
+@dataclass_json
+@dataclass
+class FileTransfer:
+    source_filenames: List[AnyStr]
 
 
 class FileToPredictableLocationOperator(BaseOperator):
@@ -88,8 +98,8 @@ class FileToPredictableLocationOperator(BaseOperator):
         if len(source_names) != 0:
             logging.info(f"Pushing file names {source_names}")
             task_instance = context['task_instance']
-            task_instance.xcom_push('source_names', source_names)
-            task_instance.xcom_push('dest_dir', dest_dir)
+            task_instance.xcom_push(
+                'file_transfer', FileTransfer(source_names).to_dict())
 
 
 class PredictableLocationToFinalLocationOperator(BaseOperator):
@@ -97,6 +107,7 @@ class PredictableLocationToFinalLocationOperator(BaseOperator):
     Picks up a file from predictable location storage and loads/transfers the results to 
     a target system (in this case another directory, but it could be anywhere).
     """
+
     def __init__(self,
                  src_conn_id,
                  dst_conn_id,
@@ -149,31 +160,50 @@ class CheckReceivedFileOperator(BaseOperator):
     def __init__(self,
                  file_mask: str,
                  file_prefixes: Set[str],
-                 xcom_task_id: str,
+                 dst_conn_id: str,
                  *args,
                  **kwargs):
         super(CheckReceivedFileOperator, self).__init__(*args, **kwargs)
         self.file_mask = file_mask
         self.file_prefixes = file_prefixes
-        self.xcom_task_id = xcom_task_id
+        self.dst_conn_id = dst_conn_id
 
-    def get_source_names(self, context) -> List[str]:
-        return context['task_instance'].xcom_pull(self.xcom_task_id, key='source_names') or []
+    def get_file_transfers(self, context) -> List[FileTransfer]:
+        task = context['task_instance']
+        file_transfers = []
+        for id in self.upstream_task_ids:
+            ft = task.xcom_pull(id, key='file_transfer')
+            if ft:
+                file_transfers.append(FileTransfer.from_dict(ft))
+        return file_transfers
 
-    def get_dest_dir(self, context) -> str:
-        return context['task_instance'].xcom_pull(self.xcom_task_id, key='dest_dir') or ''
+    def destination_file_names(self, context) -> List[str]:
+        dest_hook = FSHook(conn_id=self.dst_conn_id)
+        dest_root_dir = dest_hook.get_path()
+        dag_id = self.dag.dag_id
+        execution_date = context['execution_date'].strftime(DATE_FORMAT)
+
+        dest_dirs = [os.path.join(dest_root_dir, dag_id, task_id, execution_date)
+                     for task_id in self.upstream_task_ids]
+        dest_names = [fnmatch.filter(os.listdir(
+            dest_dir), self.file_mask) for dest_dir in dest_dirs]
+        return list(itertools.chain(*dest_names))
 
     def execute(self, context):
-        source_names = self.get_source_names(context)
-        logging.info(f"source_names: {source_names}")
+        file_transfers = self.get_file_transfers(context)
+        logging.info(f"file_transfers: {file_transfers}")
 
-        if len(source_names) != 0:
-            dest_dir = self.get_dest_dir(context)
-            logging.info(f"dest_dir: {dest_dir}")
-            dest_names = fnmatch.filter(os.listdir(dest_dir), self.file_mask)
+        if len(file_transfers) != 0:
+            dest_names = destination_file_names(context)
+            logging.info(f"Destination file names: {dest_names}")
+
+            source_names = [ft.source_filenames for ft in file_transfers]
+            source_names = list(itertools.chain(*source_names))
+            logging.info(f"Source file names: {source_names}")
+
             joined_names = set(source_names + dest_names)
             logging.info(
-                f"Source and destinations file names with file mask '{self.file_mask}'':\n {joined_names}")
+                f"Source and destination file names with file mask '{self.file_mask}'':\n {joined_names}")
             found_prefixes = set(map(lambda n: n.split("_")[0], joined_names))
 
             if self.file_prefixes == found_prefixes:
