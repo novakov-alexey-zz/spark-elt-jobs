@@ -11,12 +11,8 @@ default_args = {
     "email_on_failure": False,
 }
 
-dags_folder = os.environ.get(
-   "DAGS_FOLDER",
-   "/Users/Alexey_Novakov/dev/git/airflow-poc/src"
-)
 # path to JSON file must be inserted during this python file generation
-json_location = os.path.join(dags_folder, "json/demo_dag.json")
+json_location = os.path.join('/Users/Alexey_Novakov/dev/git/airflow-poc/py_src', "json/demo_dag.json")
 
 with open(json_location) as file:
     definition = json.load(file)
