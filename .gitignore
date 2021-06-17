@@ -7,3 +7,5 @@ target
 metals.sbt
 *.crc
 .bsp
+data/raw-data
+*.crc

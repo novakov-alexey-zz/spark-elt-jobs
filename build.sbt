@@ -2,18 +2,29 @@ import Dependencies._
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 ThisBuild / scalaVersion := "2.12.14"
-ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / organization := "com.example"
-ThisBuild / organizationName := "example"
+ThisBuild / organization := "org.novakov-alexey"
+ThisBuild / organizationName := "novakov-alexey"
 
 lazy val root = (project in file("."))
   .settings(
     name := "spark-jobs",
     libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-sql" % "3.1.2",
-      "com.lihaoyi" %% "mainargs" % "0.2.1",
+      sparkSql % Provided,
+      mainargs,
       scalaTest % Test
-    )
+    ),
+    assemblyPackageScala / assembleArtifact := false,
+    // uses compile classpath for the run task, including "provided" jar (cf http://stackoverflow.com/a/21803413/3827)
+    Compile / run := Defaults
+      .runTask(
+        Compile / fullClasspath,
+        Compile / run / mainClass,
+        Compile / run / runner
+      )
+      .evaluated,
+    Compile / runMain := Defaults
+      .runMainTask(Compile / fullClasspath, Compile / run / runner)
+      .evaluated
   )
 
 console / initialCommands := s"""
@@ -24,5 +35,3 @@ val spark =
       .master("local")
       .getOrCreate()
 """
-
-//TODO: add assembly
