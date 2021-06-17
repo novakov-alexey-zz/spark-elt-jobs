@@ -18,18 +18,14 @@ object FsUtil {
       val destPath = new HPath(output.resolve(src.getName()).toString())
       FileUtil.copy(src, fs, destPath, false, fs.getConf())
 
-      if (params.moveSourceFiles.value) {
+      if (params.moveSourceFiles.value)
         moveFile(src, params.processedDir, fs)
-      }
     }
   }
 
   def sparkCopy(params: Params) = {
     val output = outputDir(params)
-    val sparkSession =
-      SparkSession.builder
-        .appName("FileToDataset")
-        .getOrCreate()
+    val sparkSession = SparkSession.builder.getOrCreate()
 
     useResource(sparkSession) { spark =>
       val inputData =
