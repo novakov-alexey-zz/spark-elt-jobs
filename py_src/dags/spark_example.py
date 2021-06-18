@@ -3,6 +3,7 @@ from airflow.utils.dates import days_ago
 from airflow.models import BaseOperator
 from airflow.contrib.operators.spark_submit_operator import SparkSubmitOperator
 from airflow.operators.bash import BashOperator
+from airflow.utils.trigger_rule import TriggerRule
 from datetime import timedelta
 from operators.file_operators import CheckReceivedFileOperator
 from dags.macros import ConnectionGrabber, from_json
@@ -25,7 +26,6 @@ dag = DAG(
     max_active_runs=1)
 
 file_prefixes = {"items", "orders", "customers"}
-extract_file_tasks = []
 
 
 def etl_job_args(file_prefix: str) -> List[str]:
@@ -43,7 +43,8 @@ def etl_job_args(file_prefix: str) -> List[str]:
             file_prefix + "_{{ ds }}.csv",
             "--move-sources",
             "--processed-dir",
-            "{{fromjson(connection.fs_local_input.extra)['path']}}/processed"
+            "{{fromjson(connection.fs_local_input.extra)['path']}}/processed",
+            "--overwrite"
             ]
 
 
@@ -76,18 +77,41 @@ def hadoop_copy(task_id: str, file_prefix: str) -> BaseOperator:
     )
 
 
+extract_file_tasks = []
 # for prefix in file_prefixes:
 # extract_file_tasks.append(spark_submit(f'file2location_all', '*'))
 extract_file_tasks.append(hadoop_copy(f'file2location_all', '*'))
 
-check_file = CheckReceivedFileOperator(
-    task_id='check_file',
-    file_mask="*_{{ ds }}.csv",
-    file_prefixes=file_prefixes,
-    dst_conn_id='fs_local_raw_data',
-    dag=dag)
+check_file_args_list = [
+    "-i",
+    "{{fromjson(connection.fs_local_raw_data.extra)['path']}}",
+    "--execution-date",
+    "{{ds}}",
+    "-d",
+    "{{dag.dag_id}}",
+    "-t",
+    "{{task.task_id}}",
+    "--glob-pattern",
+    "*_{{ ds }}.csv"
+] + list(map(lambda a: "--file-prefixes " + a, file_prefixes))
 
-extract_file_tasks >> check_file
+check_file_args = reduce(lambda a, b: a + ' ' + b, check_file_args_list)
+
+check_file = BashOperator(
+    task_id='check_file',
+    bash_command="java -cp {{fromjson(connection.etl_jobs_hadoop_jar.extra)['path']}} etljobs.hadoop.CheckFileExists " + check_file_args,
+    skip_exit_code=99,
+    dag=dag
+)
+
+join_dataset = BashOperator(
+    task_id='join_dataset',
+    bash_command='echo "joining data"',
+    trigger_rule=TriggerRule.NONE_SKIPPED,
+    dag=dag
+)
+
+extract_file_tasks >> check_file >> join_dataset
 
 if __name__ == "__main__":
     dag.cli()

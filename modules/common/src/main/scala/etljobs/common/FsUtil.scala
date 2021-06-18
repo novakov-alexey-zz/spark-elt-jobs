@@ -4,6 +4,7 @@ import org.apache.hadoop.fs.{FileSystem, FileUtil, Path => HPath}
 import org.apache.hadoop.fs.GlobFilter
 import java.nio.file.Path
 import java.io.File
+import java.time.LocalDate
 
 object FsUtil {
 
@@ -21,11 +22,12 @@ object FsUtil {
     FileUtil.copy(src, fs, processedPath, true, fs.getConf())
   }
 
-  def outputDir(params: Params) =
+  case class JobContext(dagId: String, executionDate: LocalDate)
+
+  def targetDir(rootDir: Path, ctx: JobContext) =
     Path.of(
-      params.outputPath.toString(),
-      params.dagId,
-      params.taskId,
-      params.executionDate.toString
+      rootDir.toString(),
+      ctx.dagId,
+      ctx.executionDate.toString
     )
 }

@@ -1,27 +1,17 @@
 package etljobs.common
 
-import mainargs.{main, arg, ParserForClass, TokensReader}
+import mainargs.{main, arg, ParserForClass}
 import java.time.LocalDate
 import java.nio.file.Path
 import mainargs.Flag
+import MainArgsUtil._
 
-object Params {
-  implicit object PathRead
-      extends TokensReader[Path](
-        "path",
-        strs => Right(Path.of(strs.head))
-      )
-  implicit object DateRead
-      extends TokensReader[LocalDate](
-        "executionDate",
-        strs => Right(LocalDate.parse(strs.head))
-      )
-
-  implicit def paramsParser = ParserForClass[Params]
+object FileCopyParams {
+  implicit def paramsParser = ParserForClass[FileCopyParams]
 }
 
 @main
-case class Params(
+case class FileCopyParams(
     @arg(short = 'i', doc = "Path to input directory")
     inputPath: Path,
     @arg(short = 'o', doc = "Output directory")
@@ -53,5 +43,9 @@ case class Params(
       name = "processed-dir",
       doc = "A path to move processed source files into"
     )
-    processedDir: Path
+    processedDir: Path,
+    @arg(
+      doc = "Ovewrite destination files if they exist"
+    )
+    overwrite: Flag
 )
