@@ -1,4 +1,4 @@
-package example
+package etljobs.common
 
 import mainargs.{main, arg, ParserForClass, TokensReader}
 import java.time.LocalDate

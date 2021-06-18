@@ -1,27 +1,19 @@
 from airflow import DAG
-from airflow.models.connection import Connection
 from airflow.utils.dates import days_ago
-from datetime import timedelta
+from airflow.models import BaseOperator
 from airflow.contrib.operators.spark_submit_operator import SparkSubmitOperator
+from airflow.operators.bash import BashOperator
+from datetime import timedelta
 from operators.file_operators import CheckReceivedFileOperator
-from typing import Dict
-import json
+from dags.macros import ConnectionGrabber, from_json
+from typing import List
+from functools import reduce
 
 args = {
     'owner': 'alexey',
     'start_date': '2021-06-10',
     'provide_context': True
 }
-
-
-class ConnectionGrabber:
-    def __getattr__(self, name):
-        return Connection.get_connection_from_secrets(name)
-
-
-def from_json(text: str) -> Dict:
-    return json.loads(text)
-
 
 dag = DAG(
     'spark_example',
@@ -32,45 +24,70 @@ dag = DAG(
         'connection': ConnectionGrabber(), 'fromjson': from_json},
     max_active_runs=1)
 
+file_prefixes = {"items", "orders", "customers"}
+extract_file_tasks = []
 
-file_to_location_job = SparkSubmitOperator(
-    task_id='file2location',
-    conn_id='spark_default',
-    java_class='example.FileToDataset',
-    application="{{fromjson(connection.fs_spark_jar.extra)['path']}}",
-    application_args=["-i",
-                      "{{fromjson(connection.fs_local_input.extra)['path']}}",
-                      "-o",
-                      "{{fromjson(connection.fs_local_raw_data.extra)['path']}}",
-                      "--execution-date",
-                      "{{ds}}",
-                      "-d",
-                      "{{dag.dag_id}}",
-                      "-t",
-                      "{{task.task_id}}",
-                      "--glob-pattern",
-                      "items_{{ ds }}.csv",
-                      "--move-sources",
-                      "--processed-dir",
-                      "{{fromjson(connection.fs_local_input.extra)['path']}}/processed"],
-    total_executor_cores='1',
-    executor_cores='1',
-    executor_memory='2g',
-    num_executors='1',
-    name='airflow-file-2-file',
-    verbose=True,
-    driver_memory='1g',
-    dag=dag,
-)
+
+def etl_job_args(file_prefix: str) -> List[str]:
+    return ["-i",
+            "{{fromjson(connection.fs_local_input.extra)['path']}}",
+            "-o",
+            "{{fromjson(connection.fs_local_raw_data.extra)['path']}}",
+            "--execution-date",
+            "{{ds}}",
+            "-d",
+            "{{dag.dag_id}}",
+            "-t",
+            "{{task.task_id}}",
+            "--glob-pattern",
+            file_prefix + "_{{ ds }}.csv",
+            "--move-sources",
+            "--processed-dir",
+            "{{fromjson(connection.fs_local_input.extra)['path']}}/processed"
+            ]
+
+
+def spark_submit(task_id: str, file_prefix: str) -> BaseOperator:
+    return SparkSubmitOperator(
+        task_id=task_id,
+        conn_id='spark_default',
+        java_class='example.FileToFile',
+        application="{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}",
+        application_args=etl_job_args(file_prefix),
+        total_executor_cores='1',
+        executor_cores='1',
+        executor_memory='2g',
+        num_executors='1',
+        name='airflow-file-2-file',
+        verbose=True,
+        driver_memory='1g',
+        dag=dag
+    )
+
+
+def hadoop_copy(task_id: str, file_prefix: str) -> BaseOperator:
+    args_list = etl_job_args(file_prefix)
+    args = reduce(lambda a, b: a + ' ' + b, args_list)
+    return BashOperator(
+        task_id=task_id,
+        bash_command="java -cp {{fromjson(connection.etl_jobs_hadoop_jar.extra)['path']}} etljobs.hadoop.FileToFile " + args,
+        skip_exit_code=None,
+        dag=dag
+    )
+
+
+# for prefix in file_prefixes:
+# extract_file_tasks.append(spark_submit(f'file2location_all', '*'))
+extract_file_tasks.append(hadoop_copy(f'file2location_all', '*'))
 
 check_file = CheckReceivedFileOperator(
     task_id='check_file',
     file_mask="*_{{ ds }}.csv",
-    file_prefixes={"items", "orders", "customers"},
+    file_prefixes=file_prefixes,
     dst_conn_id='fs_local_raw_data',
     dag=dag)
 
-file_to_location_job >> check_file
+extract_file_tasks >> check_file
 
 if __name__ == "__main__":
     dag.cli()
