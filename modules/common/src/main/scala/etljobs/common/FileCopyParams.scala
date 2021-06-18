@@ -25,25 +25,16 @@ case class FileCopyParams(
     @arg(short = 'd', doc = "DAG id to create sub-folder inside the outputPath")
     dagId: String,
     @arg(
-      short = 't',
-      doc = "Task id to create sub-folder inside the outputPath"
-    )
-    taskId: String,
-    @arg(
       name = "glob-pattern",
+      short = 'p',
       doc = "Filter inputPath based on glob pattern"
     )
     globPattern: String,
     @arg(
-      name = "move-sources",
-      doc = "Move source files to processedDir"
-    )
-    moveSourceFiles: Flag,
-    @arg(
       name = "processed-dir",
       doc = "A path to move processed source files into"
     )
-    processedDir: Path,
+    processedDir: Option[Path],
     @arg(
       doc = "Ovewrite destination files if they exist"
     )

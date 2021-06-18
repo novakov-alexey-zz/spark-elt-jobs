@@ -12,7 +12,7 @@ object MainArgsUtil {
       )
   implicit object DateRead
       extends TokensReader[LocalDate](
-        "executionDate",
+        "localDate",
         strs => Right(LocalDate.parse(strs.head))
       )
 }

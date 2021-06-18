@@ -26,8 +26,9 @@ object FileToFile extends App {
       fs.delete(destPath, false)
       FileUtil.copy(src, fs, destPath, false, fs.getConf())
 
-      if (params.moveSourceFiles.value)
-        moveFile(src, params.processedDir, fs)
+      params.processedDir.foreach { processedDir =>
+        moveFile(src, processedDir, fs)
+      }
     }
   }
 

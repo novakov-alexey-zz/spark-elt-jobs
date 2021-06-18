@@ -45,8 +45,7 @@ object CheckFileExists extends App {
   val FilesAbsentCode = 99
 
   @main
-  def run(params: Params) = {
-    println(s"file prefixes: ${params.filePrefixes}")
+  def run(params: Params) = {    
     val targetPath = FsUtil.targetDir(
       params.inputPath,
       JobContext(params.dagId, params.executionDate)

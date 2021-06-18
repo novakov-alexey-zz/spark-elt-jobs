@@ -29,11 +29,11 @@ object FileToDataset extends App {
       println(s"output path: $output")
       inputData.write.mode(SaveMode.Overwrite).csv(output.toString())
 
-      if (params.moveSourceFiles.value) {
+      params.processedDir.foreach { processedDir =>
         val fs = FileSystem.get(new Configuration())
         val srcFiles = sourceFiles(params.globPattern, params.inputPath)
         srcFiles.foreach { src =>
-          moveFile(src, params.processedDir, fs)
+          moveFile(src, processedDir, fs)
         }
       }
     }
