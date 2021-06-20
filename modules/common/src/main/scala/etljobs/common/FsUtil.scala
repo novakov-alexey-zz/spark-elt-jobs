@@ -8,16 +8,17 @@ import java.time.LocalDate
 
 object FsUtil {
 
-  def sourceFiles(globPattern: String, inputPath: Path) = {
+  def listFiles(globPattern: String, inputPath: Path) = {
     val filter = new GlobFilter(globPattern)
+    val dir = inputPath.toFile()
     FileUtil
-      .listFiles(inputPath.toFile())
+      .listFiles(dir)
       .filter(f => filter.accept(new HPath(f.toString())))
   }
 
-  def moveFile(src: File, processedDir: Path, fs: FileSystem) = {
+  def moveFile(src: File, destinationDir: Path, fs: FileSystem) = {
     val processedPath = new HPath(
-      processedDir.resolve(src.getName()).toString()
+      destinationDir.resolve(src.getName()).toString()
     )
     FileUtil.copy(src, fs, processedPath, true, fs.getConf())
   }

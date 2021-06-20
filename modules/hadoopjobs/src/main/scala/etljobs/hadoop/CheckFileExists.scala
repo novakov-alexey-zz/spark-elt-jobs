@@ -45,15 +45,15 @@ object CheckFileExists extends App {
   val FilesAbsentCode = 99
 
   @main
-  def run(params: Params) = {    
+  def run(params: Params) = {
     val targetPath = FsUtil.targetDir(
       params.inputPath,
       JobContext(params.dagId, params.executionDate)
     )
-    val inputFiles = FsUtil.sourceFiles(params.globPattern, targetPath)
+    val inputFiles = FsUtil.listFiles(params.globPattern, targetPath)
     val inputNames = inputFiles.map(_.getName())
     val filesExist =
-      params.filePrefixes.forall(p => inputNames.exists(n => n.startsWith(p)))
+      params.filePrefixes.forall(p => inputNames.exists(_.startsWith(p)))
     println(s"all file exist: $filesExist")
     val ec = if (filesExist) FilesExistCode else FilesAbsentCode
     System.exit(ec)

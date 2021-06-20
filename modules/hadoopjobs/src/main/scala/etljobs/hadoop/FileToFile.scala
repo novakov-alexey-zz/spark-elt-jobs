@@ -4,7 +4,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, FileUtil, Path => HPath}
 import mainargs.{main, ParserForMethods}
 import etljobs.common.FileCopyParams
-import etljobs.common.FsUtil.{sourceFiles, targetDir, moveFile}
+import etljobs.common.FsUtil.{listFiles, targetDir, moveFile}
 import etljobs.common.FsUtil.JobContext
 
 object FileToFile extends App {
@@ -14,7 +14,7 @@ object FileToFile extends App {
 
   def hadoopCopy(params: FileCopyParams) = {
     val fs = FileSystem.get(new Configuration())
-    val srcFiles = sourceFiles(params.globPattern, params.inputPath)
+    val srcFiles = listFiles(params.globPattern, params.inputPath)
     println(s"Found files:\n${srcFiles.mkString("\n")}")
 
     val output = targetDir(
@@ -26,8 +26,8 @@ object FileToFile extends App {
       fs.delete(destPath, false)
       FileUtil.copy(src, fs, destPath, false, fs.getConf())
 
-      params.processedDir.foreach { processedDir =>
-        moveFile(src, processedDir, fs)
+      params.processedDir.foreach { dest =>
+        moveFile(src, dest, fs)
       }
     }
   }
