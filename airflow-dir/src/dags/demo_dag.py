@@ -12,7 +12,7 @@ default_args = {
 }
 
 # path to JSON file must be inserted during this python file generation
-json_location = os.path.join('/Users/Alexey_Novakov/dev/git/airflow-poc/py_src', "json/demo_dag.json")
+json_location = os.path.join('/opt/airflow/dags', "json/demo_dag.json")
 
 with open(json_location) as file:
     definition = json.load(file)

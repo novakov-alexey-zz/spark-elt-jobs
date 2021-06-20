@@ -107,7 +107,7 @@ check_files = BashOperator(
     dag=dag
 )
 
-files_to_dataset = spark_copy(f'file2location_all', '*')
+files_to_dataset = spark_copy(f'file2dataset', '*')
 join_dataset = BashOperator(
     task_id='join_dataset',
     bash_command='echo "joining data"',

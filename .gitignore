@@ -9,3 +9,5 @@ metals.sbt
 .bsp
 data
 *.crc
+github
+airflow-dir/logs
