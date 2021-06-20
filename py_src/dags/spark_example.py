@@ -37,8 +37,6 @@ def etl_job_args(file_prefix: str) -> List[str]:
             "{{ds}}",
             "-d",
             "{{dag.dag_id}}",
-            "-t",
-            "{{task.task_id}}",
             "--glob-pattern",
             file_prefix + "_{{ ds }}.csv",
             "--move-sources",
@@ -48,11 +46,11 @@ def etl_job_args(file_prefix: str) -> List[str]:
             ]
 
 
-def spark_submit(task_id: str, file_prefix: str) -> BaseOperator:
+def spark_copy(task_id: str, file_prefix: str) -> BaseOperator:
     return SparkSubmitOperator(
         task_id=task_id,
         conn_id='spark_default',
-        java_class='example.FileToFile',
+        java_class='etljobs.spark.FileToDataset',
         application="{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}",
         application_args=etl_job_args(file_prefix),
         total_executor_cores='1',
@@ -66,9 +64,13 @@ def spark_submit(task_id: str, file_prefix: str) -> BaseOperator:
     )
 
 
+def mkString(list: List[str], sep: str = ' ') -> str:
+    return reduce(lambda a, b: a + ' ' + b, list)
+
+
 def hadoop_copy(task_id: str, file_prefix: str) -> BaseOperator:
     args_list = etl_job_args(file_prefix)
-    args = reduce(lambda a, b: a + ' ' + b, args_list)
+    args = mkString(args_list)
     return BashOperator(
         task_id=task_id,
         bash_command="java -cp {{fromjson(connection.etl_jobs_hadoop_jar.extra)['path']}} etljobs.hadoop.FileToFile " + args,
@@ -78,8 +80,11 @@ def hadoop_copy(task_id: str, file_prefix: str) -> BaseOperator:
 
 
 extract_file_tasks = []
+
+# Alternative example using separate task to download a file with specific prefix
 # for prefix in file_prefixes:
-# extract_file_tasks.append(spark_submit(f'file2location_all', '*'))
+#     extract_file_tasks.append(spark_submit(f'file2location_all', prefix))
+
 extract_file_tasks.append(hadoop_copy(f'file2location_all', '*'))
 
 check_file_args_list = [
@@ -89,21 +94,20 @@ check_file_args_list = [
     "{{ds}}",
     "-d",
     "{{dag.dag_id}}",
-    "-t",
-    "{{task.task_id}}",
     "--glob-pattern",
     "*_{{ ds }}.csv"
-] + list(map(lambda a: "--file-prefixes " + a, file_prefixes))
+] + ["--file-prefixes " + p for p in file_prefixes]
 
-check_file_args = reduce(lambda a, b: a + ' ' + b, check_file_args_list)
+check_file_args = mkString(check_file_args_list)
 
-check_file = BashOperator(
+check_files = BashOperator(
     task_id='check_file',
     bash_command="java -cp {{fromjson(connection.etl_jobs_hadoop_jar.extra)['path']}} etljobs.hadoop.CheckFileExists " + check_file_args,
     skip_exit_code=99,
     dag=dag
 )
 
+files_to_dataset = spark_copy(f'file2location_all', '*')
 join_dataset = BashOperator(
     task_id='join_dataset',
     bash_command='echo "joining data"',
@@ -111,7 +115,7 @@ join_dataset = BashOperator(
     dag=dag
 )
 
-extract_file_tasks >> check_file >> join_dataset
+extract_file_tasks >> check_files >> files_to_dataset
 
 if __name__ == "__main__":
     dag.cli()
