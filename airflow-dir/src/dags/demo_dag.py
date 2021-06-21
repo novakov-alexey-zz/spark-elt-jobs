@@ -3,6 +3,7 @@ import os
 
 from datetime import datetime
 from dags.dynamic_dag_utils import create_dag
+from dags.macros import ConnectionGrabber, from_json
 
 default_args = {
     "owner": "alexey",
@@ -11,8 +12,10 @@ default_args = {
     "email_on_failure": False,
 }
 
+DAGS_FOLDER = "{{fromjson(connection.dags_folder.extra)['path']}}"
+
 # path to JSON file must be inserted during this python file generation
-json_location = os.path.join('/opt/airflow/dags', "json/demo_dag.json")
+json_location = os.path.join(DAGS_FOLDER, "json/demo_dag.json")
 
 with open(json_location) as file:
     definition = json.load(file)
