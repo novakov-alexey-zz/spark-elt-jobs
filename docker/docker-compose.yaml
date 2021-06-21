@@ -56,6 +56,10 @@ x-airflow-common:
     - ../airflow-dir/src/json:/opt/airflow/dags/json
     - ../airflow-dir/logs:/opt/airflow/logs
     - ../airflow-dir/plugins:/opt/airflow/plugins
+    - ../modules/sparkjobs/target/scala-2.12:/opt/etljobs/spark-jobs
+    - ../modules/hadoopjobs/target/scala-2.12:/opt/etljobs/hadoop-jobs
+    - ../data/input:/opt/airflow/test-data/input
+    - ../data/raw-data:/opt/airflow/test-data/raw-data
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}"
   depends_on:
     redis:

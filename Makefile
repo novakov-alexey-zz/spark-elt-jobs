@@ -22,3 +22,6 @@ build-airflow-image:
 		--build-arg ADDITIONAL_PYTHON_DEPS="apache-airflow-providers-apache-spark dataclasses-json" \
 		--build-arg AIRFLOW_VERSION=$(VERSION) \
 		./github/airflow
+	docker build -t apache/airflow:custom-jdk-$(VERSION) -f docker/Dockerfile ./docker	
+docker-remove: 
+	docker-compose -f docker/docker-compose.yaml down --volumes all
