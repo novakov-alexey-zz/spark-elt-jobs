@@ -52,7 +52,8 @@ def spark_copy(task_id: str, entity_patterns: List[Tuple[str, str]]) -> BaseOper
     input_path = "{{fromjson(connection.fs_local_raw_data.extra)['path']}}"
     output_path = "{{fromjson(connection.fs_local_dw.extra)['path']}}"
     args = formats_args + \
-        etl_job_args(input_path, output_path, entity_patterns)
+        etl_job_args(input_path, output_path, entity_patterns) + \
+        ["--move-files"]
 
     return SparkSubmitOperator(
         task_id=task_id,

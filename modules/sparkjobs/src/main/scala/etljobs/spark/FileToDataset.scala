@@ -1,6 +1,13 @@
 package etljobs.spark
 
-import mainargs.{main, ParserForMethods, ParserForClass, TokensReader, arg}
+import mainargs.{
+  main,
+  ParserForMethods,
+  ParserForClass,
+  TokensReader,
+  arg,
+  Flag
+}
 import etljobs.common.FsUtil._
 import etljobs.common.FileCopyParams
 import org.apache.spark.sql.SparkSession
@@ -33,6 +40,12 @@ case class SparkCopyParams(
       doc = "File ouput format to be used by Spark Datasource API on write"
     )
     saveFormat: FileFormat,
+    @arg(
+      name = "move-files",
+      doc =
+        "Whether to move files to processed directory inside the job context"
+    )
+    moveFiles: Flag,
     copyParams: FileCopyParams
 )
 
@@ -99,15 +112,16 @@ object FileToDataset extends App {
       }
 
       // move source files to processed directory
-      if (params.copyParams.processedDir.isDefined) {
+      if (params.moveFiles.value || params.copyParams.processedDir.isDefined) {
+        val dest =
+          params.copyParams.processedDir.getOrElse(input.resolve("processed"))
         val fs = FileSystem.get(new Configuration())
         params.copyParams.entityPatterns.foreach { p =>
           val srcFiles =
-            listFiles(p.globPattern, params.copyParams.inputPath)
-          params.copyParams.processedDir.foreach { dst =>
-            srcFiles.foreach { src =>
-              moveFile(src, dst, fs)
-            }
+            listFiles(p.globPattern, input)
+          println(s"moving files: ${srcFiles.mkString(",")} to $dest")
+          srcFiles.foreach { src =>
+            moveFile(src, dest, fs)
           }
         }
       }
