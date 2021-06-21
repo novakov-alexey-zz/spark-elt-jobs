@@ -1,14 +1,30 @@
 package etljobs.common
 
-import mainargs.{main, arg, ParserForClass}
+import mainargs.{main, arg, ParserForClass, TokensReader, Flag}
 import java.time.LocalDate
 import java.nio.file.Path
-import mainargs.Flag
 import MainArgsUtil._
 
 object FileCopyParams {
+  implicit object EntityPatternRead
+      extends TokensReader[EntityPattern](
+        "entityPattern",
+        strs => {
+          assert(strs.nonEmpty, "At least one entityPattern must be specified")
+          val pair = strs.head.split(":")
+          assert(
+            strs.head.contains(":"),
+            "entityPattern must contain semicolon as separator of the entity name and pattern"
+          )
+          Right(EntityPattern(pair(0), pair(1)))
+        }
+      )
+
   implicit def paramsParser = ParserForClass[FileCopyParams]
 }
+
+@main
+case class EntityPattern(name: String, globPattern: String)
 
 @main
 case class FileCopyParams(
@@ -27,9 +43,10 @@ case class FileCopyParams(
     @arg(
       name = "glob-pattern",
       short = 'p',
-      doc = "Filter inputPath based on glob pattern"
+      doc =
+        "Entity name and and GLOB pattern for 'inputPath' in format <name:pattern>"
     )
-    globPattern: String,
+    entityPatterns: List[EntityPattern],
     @arg(
       name = "processed-dir",
       doc = "A path to move processed source files into"

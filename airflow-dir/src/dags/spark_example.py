@@ -7,7 +7,7 @@ from airflow.utils.trigger_rule import TriggerRule
 from datetime import timedelta
 from operators.file_operators import CheckReceivedFileOperator
 from dags.macros import ConnectionGrabber, from_json
-from typing import List
+from typing import List, Tuple
 from functools import reduce
 
 args = {
@@ -28,31 +28,38 @@ dag = DAG(
 file_prefixes = {"items", "orders", "customers"}
 
 
-def etl_job_args(file_prefix: str) -> List[str]:
-    return ["-i",
-            "{{fromjson(connection.fs_local_input.extra)['path']}}",
+def etl_job_args(input_path: str, output_path: str, entity_patterns: List[Tuple[str, str]]) -> List[str]:
+    args = ["-i",
+            input_path,
             "-o",
-            "{{fromjson(connection.fs_local_raw_data.extra)['path']}}",
+            output_path,
             "--execution-date",
             "{{ds}}",
             "-d",
             "{{dag.dag_id}}",
-            "--glob-pattern",
-            file_prefix + "_{{ ds }}.csv",
-            "--move-sources",
-            "--processed-dir",
-            "{{fromjson(connection.fs_local_input.extra)['path']}}/processed",
             "--overwrite"
             ]
 
+    for (entity_name, prefix) in entity_patterns:
+        args = args + ["--glob-pattern", entity_name +
+                       ":" + prefix + "_{{ ds }}.csv"]
 
-def spark_copy(task_id: str, file_prefix: str) -> BaseOperator:
+    return args
+
+
+def spark_copy(task_id: str, entity_patterns: List[Tuple[str, str]]) -> BaseOperator:
+    formats_args = ["--input-format", "csv", "--output-format", "parquet"]
+    input_path = "{{fromjson(connection.fs_local_raw_data.extra)['path']}}"
+    output_path = "{{fromjson(connection.fs_local_dw.extra)['path']}}"
+    args = formats_args + \
+        etl_job_args(input_path, output_path, entity_patterns)
+
     return SparkSubmitOperator(
         task_id=task_id,
         conn_id='spark_default',
         java_class='etljobs.spark.FileToDataset',
         application="{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}",
-        application_args=etl_job_args(file_prefix),
+        application_args=args,
         total_executor_cores='1',
         executor_cores='1',
         executor_memory='2g',
@@ -64,12 +71,17 @@ def spark_copy(task_id: str, file_prefix: str) -> BaseOperator:
     )
 
 
-def mkString(list: List[str], sep: str = ' ') -> str:
-    return reduce(lambda a, b: a + ' ' + b, list)
+def mkString(l: List[str], sep: str = ' ') -> str:
+    return reduce(lambda a, b: a + ' ' + b, l)
 
 
-def hadoop_copy(task_id: str, file_prefix: str) -> BaseOperator:
-    args_list = etl_job_args(file_prefix)
+def hadoop_copy(task_id: str, entity_patterns: List[Tuple[str, str]]) -> BaseOperator:
+    input_path = "{{fromjson(connection.fs_local_input.extra)['path']}}"
+    output_path = "{{fromjson(connection.fs_local_raw_data.extra)['path']}}"
+    args_list = etl_job_args(input_path, output_path, entity_patterns)
+    args_list = args_list + \
+        ["--processed-dir",
+            "{{fromjson(connection.fs_local_input.extra)['path']}}/processed"]
     args = mkString(args_list)
     return BashOperator(
         task_id=task_id,
@@ -79,13 +91,8 @@ def hadoop_copy(task_id: str, file_prefix: str) -> BaseOperator:
     )
 
 
-extract_file_tasks = []
-
-# Alternative example using separate task to download a file with specific prefix
-# for prefix in file_prefixes:
-#     extract_file_tasks.append(spark_submit(f'file2location_all', prefix))
-
-extract_file_tasks.append(hadoop_copy(f'file2location_all', '*'))
+extract_file_task = hadoop_copy(f'file2location_all', [('all', '*')])
+file_prefixes_args = ["--file-prefixes " + p for p in file_prefixes]
 
 check_file_args_list = [
     "-i",
@@ -96,7 +103,7 @@ check_file_args_list = [
     "{{dag.dag_id}}",
     "--glob-pattern",
     "*_{{ ds }}.csv"
-] + ["--file-prefixes " + p for p in file_prefixes]
+] + file_prefixes_args
 
 check_file_args = mkString(check_file_args_list)
 
@@ -107,15 +114,10 @@ check_files = BashOperator(
     dag=dag
 )
 
-files_to_dataset = spark_copy(f'file2dataset', '*')
-join_dataset = BashOperator(
-    task_id='join_dataset',
-    bash_command='echo "joining data"',
-    trigger_rule=TriggerRule.NONE_SKIPPED,
-    dag=dag
-)
+files_to_dataset = spark_copy(
+    f'file2dataset', map(lambda a: (a, a), file_prefixes))
 
-extract_file_tasks >> check_files >> files_to_dataset
+extract_file_task >> check_files >> files_to_dataset
 
 if __name__ == "__main__":
     dag.cli()

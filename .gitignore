@@ -7,7 +7,9 @@ target
 metals.sbt
 *.crc
 .bsp
-data
+data/input
+data/raw-data
+data/dw
 *.crc
 github
 airflow-dir/logs

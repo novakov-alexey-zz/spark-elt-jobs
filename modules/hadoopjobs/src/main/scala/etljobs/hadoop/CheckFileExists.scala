@@ -19,11 +19,6 @@ case class Params(
     @arg(short = 'd', doc = "DAG id to create sub-folder inside the outputPath")
     dagId: String,
     @arg(
-      short = 't',
-      doc = "Task id to create sub-folder inside the outputPath"
-    )
-    taskId: String,
-    @arg(
       name = "glob-pattern",
       doc = "Filter inputPath based on glob pattern"
     )
@@ -51,6 +46,7 @@ object CheckFileExists extends App {
       JobContext(params.dagId, params.executionDate)
     )
     val inputFiles = FsUtil.listFiles(params.globPattern, targetPath)
+    println(s"input files: ${inputFiles.mkString("\n")}")
     val inputNames = inputFiles.map(_.getName())
     val filesExist =
       params.filePrefixes.forall(p => inputNames.exists(_.startsWith(p)))
