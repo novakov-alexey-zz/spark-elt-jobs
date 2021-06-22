@@ -3,9 +3,7 @@ from airflow.utils.dates import days_ago
 from airflow.models import BaseOperator
 from airflow.contrib.operators.spark_submit_operator import SparkSubmitOperator
 from airflow.operators.bash import BashOperator
-from airflow.utils.trigger_rule import TriggerRule
 from datetime import timedelta
-from operators.file_operators import CheckReceivedFileOperator
 from dags.macros import ConnectionGrabber, from_json
 from typing import List, Tuple, Set
 from functools import reduce
@@ -30,6 +28,7 @@ LOCAL_RAW_DATA = "{{fromjson(connection.fs_local_raw_data.extra)['path']}}"
 LOCAL_DATAWAREHOUSE = "{{fromjson(connection.fs_local_dw.extra)['path']}}"
 SPARK_JOBS_JAR = "{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}"
 HADOOP_JOBS_JAR = "{{fromjson(connection.etl_jobs_hadoop_jar.extra)['path']}}"
+INPUT_SCHEMA = "{{fromjson(connection.input_schemas.extra)['path']}}"
 
 
 def etl_job_args(input_path: str, output_path: str, entity_patterns: List[Tuple[str, str]]) -> List[str]:
@@ -51,17 +50,25 @@ def etl_job_args(input_path: str, output_path: str, entity_patterns: List[Tuple[
     return args
 
 
-def spark_copy(task_id: str, entity_patterns: List[Tuple[str, str]]) -> BaseOperator:
-    formats_args = ["--input-format", "csv", "--output-format", "parquet"]
+def spark_batch_job(task_id: str, entity_patterns: List[Tuple[str, str]]) -> BaseOperator:
+    return spark_copy(task_id, entity_patterns, 'etljobs.spark.FileToDataset')
 
+
+def spark_stream_job(task_id: str, entity_patterns: List[Tuple[str, str]]) -> BaseOperator:
+    return spark_copy(task_id, entity_patterns, 'etljobs.spark.FileStreamToDataset')
+
+
+def spark_copy(task_id: str, entity_patterns: List[Tuple[str, str]], main_class: str) -> BaseOperator:
+    formats_args = ["--input-format", "csv", "--output-format", "parquet"]
+    input_schema_path = INPUT_SCHEMA + "/" + "{{dag.dag_id}}"
     args = formats_args + \
         etl_job_args(LOCAL_RAW_DATA, LOCAL_DATAWAREHOUSE, entity_patterns) + \
-        ["--move-files"]
+        ["--move-files", "-s", input_schema_path]
 
     return SparkSubmitOperator(
         task_id=task_id,
         conn_id='spark_default',
-        java_class='etljobs.spark.FileToDataset',
+        java_class=main_class,
         application=SPARK_JOBS_JAR,
         application_args=args,
         total_executor_cores='1',
@@ -112,7 +119,7 @@ def check_files_task(file_prefixes: Set[str]) -> BaseOperator:
     check_file_args = mkString(check_file_args_list)
 
     return BashOperator(
-        task_id='check_file',
+        task_id='check-file',
         bash_command="java -cp "+HADOOP_JOBS_JAR +
         " etljobs.hadoop.CheckFileExists " + check_file_args,
         skip_exit_code=99,
@@ -121,12 +128,15 @@ def check_files_task(file_prefixes: Set[str]) -> BaseOperator:
 
 
 file_prefixes = {"items", "orders", "customers"}
-extract_file_task = hadoop_copy(f'file2location_all', [('all', '*')])
+extract_file_task = hadoop_copy(f'file-2-location', [('all', '*')])
 check_files = check_files_task(file_prefixes)
-files_to_dataset = spark_copy(
-    f'file2dataset', map(lambda a: (a, a), file_prefixes))
+entity_patterns = map(lambda a: (a, a), file_prefixes)
+# files_to_dataset = spark_batch_job(
+#     f'file-2-dataset', entity_patterns)
+files_stream_to_dataset = spark_stream_job(
+    f'file-stream-2-dataset', entity_patterns)
 
-extract_file_task >> check_files >> files_to_dataset
+extract_file_task >> check_files >> files_stream_to_dataset
 
 if __name__ == "__main__":
     dag.cli()

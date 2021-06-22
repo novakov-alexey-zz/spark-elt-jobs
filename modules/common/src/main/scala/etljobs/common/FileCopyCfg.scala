@@ -5,7 +5,7 @@ import java.time.LocalDate
 import java.nio.file.Path
 import MainArgsUtil._
 
-object FileCopyParams {
+object FileCopyCfg {
   implicit object EntityPatternRead
       extends TokensReader[EntityPattern](
         "entityPattern",
@@ -20,14 +20,14 @@ object FileCopyParams {
         }
       )
 
-  implicit def paramsParser = ParserForClass[FileCopyParams]
+  implicit def cfgParser = ParserForClass[FileCopyCfg]
 }
 
 @main
 case class EntityPattern(name: String, globPattern: String)
 
 @main
-case class FileCopyParams(
+case class FileCopyCfg(
     @arg(short = 'i', doc = "Path to input directory")
     inputPath: Path,
     @arg(short = 'o', doc = "Output directory")

@@ -1,0 +1,23 @@
+{
+    "type": "struct",
+    "fields": [
+        {
+            "name": "itemId",
+            "type": "integer",
+            "nullable": true,
+            "metadata": {}
+        },
+        {
+            "name": "name",
+            "type": "string",
+            "nullable": true,
+            "metadata": {}
+        },
+        {
+            "name": "price",
+            "type": "integer",
+            "nullable": true,
+            "metadata": {}
+        }
+    ]
+}

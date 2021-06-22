@@ -27,7 +27,7 @@ object FsUtil {
 
   case class JobContext(dagId: String, executionDate: LocalDate)
 
-  def targetDir(rootDir: Path, ctx: JobContext): Path =
+  def contextDir(rootDir: Path, ctx: JobContext): Path =
     Path.of(
       rootDir.toString(),
       ctx.dagId,

@@ -1,0 +1,23 @@
+{
+    "type": "struct",
+    "fields": [
+        {
+            "name": "customerId",
+            "type": "integer",
+            "nullable": true,
+            "metadata": {}
+        },
+        {
+            "name": "name",
+            "type": "string",
+            "nullable": true,
+            "metadata": {}
+        },
+        {
+            "name": "country",
+            "type": "string",
+            "nullable": true,
+            "metadata": {}
+        }
+    ]
+}

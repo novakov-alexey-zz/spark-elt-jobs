@@ -41,7 +41,7 @@ object CheckFileExists extends App {
 
   @main
   def run(params: Params) = {
-    val targetPath = FsUtil.targetDir(
+    val targetPath = FsUtil.contextDir(
       params.inputPath,
       JobContext(params.dagId, params.executionDate)
     )
