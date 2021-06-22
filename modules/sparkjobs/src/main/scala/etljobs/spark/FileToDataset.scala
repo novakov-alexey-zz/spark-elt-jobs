@@ -75,7 +75,8 @@ object FileToDataset extends App {
       spark: SparkSession,
       params: SparkCopyParams,
       input: Path,
-      output: Path
+      output: Path,
+      saveMode: SaveMode
   ) = {
     val inputData =
       spark.read
@@ -85,14 +86,14 @@ object FileToDataset extends App {
         .format(params.inputFormat.toSparkFormat)
         .load(input.toString())
     val inputDataToWrite = inputData.write
-      .mode(SaveMode.Overwrite)
-    val out = output.toString()
+      .mode(saveMode)
 
-    params.saveFormat match {
-      case CSV     => inputDataToWrite.csv(out)
-      case JSON    => inputDataToWrite.json(out)
-      case Parquet => inputDataToWrite.parquet(out)
+    val writer = params.saveFormat match {
+      case CSV     => inputDataToWrite.csv _
+      case JSON    => inputDataToWrite.json _
+      case Parquet => inputDataToWrite.parquet _
     }
+    writer(output.toString())
   }
 
   def sparkCopy(params: SparkCopyParams) = {
@@ -105,10 +106,14 @@ object FileToDataset extends App {
 
     val sparkSession = SparkSession.builder.getOrCreate()
     useResource(sparkSession) { spark =>
+      lazy val saveMode = params.copyParams.overwrite.value match {
+        case true => SaveMode.Overwrite
+        case _    => SaveMode.ErrorIfExists
+      }
       params.copyParams.entityPatterns.foreach { p =>
         val out = output.resolve(p.name)
         println(s"output path: $out")
-        loadFileToSpark(p.globPattern, spark, params, input, out)
+        loadFileToSpark(p.globPattern, spark, params, input, out, saveMode)
       }
 
       // move source files to processed directory
@@ -120,9 +125,7 @@ object FileToDataset extends App {
           val srcFiles =
             listFiles(p.globPattern, input)
           println(s"moving files: ${srcFiles.mkString(",")} to $dest")
-          srcFiles.foreach { src =>
-            moveFile(src, dest, fs)
-          }
+          srcFiles.foreach(src => moveFile(src, dest, fs))
         }
       }
     }
