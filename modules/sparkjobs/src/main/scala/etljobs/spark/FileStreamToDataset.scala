@@ -3,16 +3,18 @@ package etljobs.spark
 import common._
 import etljobs.common.FsUtil._
 import etljobs.common.MainArgsUtil._
+import etljobs.common.FileCopyCfg
 
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.streaming.OutputMode
 import org.apache.spark.sql.streaming.Trigger
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.streaming.StreamingQuery
+
 import mainargs.{ParserForMethods, main, arg, ParserForClass}
 
 import scala.io.Source
-
 import java.nio.file.Path
 
 @main
@@ -40,15 +42,26 @@ object FileStreamToDataset extends App {
     DataType.fromJson(jsonSchema).asInstanceOf[StructType]
   }
 
-  @main
-  def run(cfg: SparkStreamCopyCfg) = {
+  private def getPaths(fileCopy: FileCopyCfg) = {
     val context =
       JobContext(
-        cfg.copyCfg.fileCopy.dagId,
-        cfg.copyCfg.fileCopy.executionDate
+        fileCopy.dagId,
+        fileCopy.executionDate
       )
-    val output = contextDir(cfg.copyCfg.fileCopy.outputPath, context)
-    val input = contextDir(cfg.copyCfg.fileCopy.inputPath, context)
+    val output = contextDir(fileCopy.outputPath, context)
+    val input = contextDir(fileCopy.inputPath, context)
+    (input, output)
+  }
+
+  private def waitForTermination(queries: List[StreamingQuery]) = {
+    println(s"waiting for termination")
+    queries.foreach(_.awaitTermination())
+    println(s"all ${queries.length} streaming queries are terminated")
+  }
+
+  @main
+  def run(cfg: SparkStreamCopyCfg) = {
+    val (input, output) = getPaths(cfg.copyCfg.fileCopy)
 
     val sparkSession = SparkSession.builder.getOrCreate()
     useResource(sparkSession) { spark =>
@@ -77,11 +90,8 @@ object FileStreamToDataset extends App {
           .start(outputPath.toString())
       }
 
-      if (queries.nonEmpty) {
-        println(s"waiting for termination")
-        queries.foreach(_.awaitTermination())
-        println(s"all ${queries.length} streaming queries are terminated")
-      }
+      if (queries.nonEmpty)
+        waitForTermination(queries)
     }
   }
 
