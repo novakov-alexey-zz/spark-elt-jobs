@@ -45,7 +45,7 @@ def etl_job_args(input_path: str, output_path: str, entity_patterns: List[Tuple[
 
     for (entity_name, prefix) in entity_patterns:
         args = args + ["--glob-pattern", entity_name +
-                       ":" + prefix + "_{{ ds }}.csv"]
+                       ":" + prefix + "_*{{ ds }}.csv"]
 
     return args
 
@@ -60,10 +60,10 @@ def spark_stream_job(task_id: str, entity_patterns: List[Tuple[str, str]]) -> Ba
 
 def spark_copy(task_id: str, entity_patterns: List[Tuple[str, str]], main_class: str) -> BaseOperator:
     formats_args = ["--input-format", "csv", "--output-format", "parquet"]
-    input_schema_path = INPUT_SCHEMA + "/" + "{{dag.dag_id}}"
+    input_schema_path = ["-s", INPUT_SCHEMA + "/" + "{{dag.dag_id}}"]
     args = formats_args + \
         etl_job_args(LOCAL_RAW_DATA, LOCAL_DATAWAREHOUSE, entity_patterns) + \
-        ["--move-files", "-s", input_schema_path]
+        ["--move-files", "--reader-options", "header:true"] + input_schema_path
 
     return SparkSubmitOperator(
         task_id=task_id,

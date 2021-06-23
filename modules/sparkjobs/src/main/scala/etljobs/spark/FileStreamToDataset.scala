@@ -56,23 +56,27 @@ object FileStreamToDataset extends App {
         val schema = getSchema(cfg.schemaPath, entity.name)
         val stream = spark.readStream
           .option("pathGlobFilter", entity.globPattern)
-          .option("header", "true") //TODO: extract to CSV config
           .format(cfg.copyCfg.inputFormat.toSparkFormat)
           .schema(schema)
-          .load(input.toString())
+        val streamWithOptions =
+          cfg.copyCfg.readerOptions.getOrElse(List.empty).foldLeft(stream) {
+            case (acc, opt) => acc.option(opt.name, opt.value)
+          }
+        val df = streamWithOptions.load(input.toString())
 
         val outputPath = output.resolve(entity.name)
         val checkpointPath = outputPath.resolve("checkpoint")
         println(
-          s"starting stream for input = ${input} to output = ${outputPath}"
+          s"starting stream for input '${input}' to output '${outputPath}'"
         )
-        stream.writeStream
+        df.writeStream
           .outputMode(OutputMode.Append)
           .option("checkpointLocation", checkpointPath.toString())
           .trigger(Trigger.Once)
           .format(cfg.copyCfg.saveFormat.toSparkFormat)
           .start(outputPath.toString())
       }
+
       if (queries.nonEmpty) {
         println(s"waiting for termination")
         queries.foreach(_.awaitTermination())
