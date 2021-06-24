@@ -69,24 +69,24 @@ object FileToDataset extends App {
       case CSV     => inputDataToWrite.csv _
       case JSON    => inputDataToWrite.json _
       case Parquet => inputDataToWrite.parquet _
-      case Delta =>
+      case Delta if entity.dedupKey.isDefined =>
         tablePath: String =>
-          entity.dedupKey match {
-            case Some(key) =>
-              val schemaPath = cfg.schemaPath.getOrElse(
-                sys.error(
-                  s"struct schema for Delta table at '$tablePath' location is required"
-                )
-              )
-              val schema = getSchema(
-                schemaPath,
-                entity.name
-              )
-              toDeltaTable(tablePath, schema, spark, key, inputDF)
-            case None =>
-              inputDataToWrite.save(tablePath)
+          val schemaPath = cfg.schemaPath.getOrElse(
+            sys.error(
+              s"struct schema for Delta table at '$tablePath' location is required"
+            )
+          )
+          val schema = getSchema(
+            schemaPath,
+            entity.name
+          )
+          entity.dedupKey.foreach { key =>
+            toDeltaTable(tablePath, schema, spark, key, inputDF)
           }
+
+      case _ => p: String => inputDataToWrite.save(p)
     }
+
     writer(output.toString())
   }
 
