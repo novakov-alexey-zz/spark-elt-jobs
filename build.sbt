@@ -17,6 +17,7 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
     name := "etl-spark-jobs",
     libraryDependencies ++= Seq(
       sparkSql % Provided,
+      delta,
       scalaTest % Test
     ),
     assemblyPackageScala / assembleArtifact := false,

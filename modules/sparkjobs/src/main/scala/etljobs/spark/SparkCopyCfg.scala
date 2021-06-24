@@ -2,17 +2,20 @@ package etljobs.spark
 
 import mainargs.{main, arg, Flag, TokensReader, ParserForClass}
 import etljobs.common.FileCopyCfg
-import FileFormat._
+import etljobs.common.MainArgsUtil.PathRead
+import DataFormat._
+import java.nio.file.Path
 
-sealed trait FileFormat {
+sealed trait DataFormat {
   def toSparkFormat: String =
     getClass.getSimpleName.toLowerCase.stripSuffix("$")
 }
 
-object FileFormat {
-  case object CSV extends FileFormat
-  case object JSON extends FileFormat
-  case object Parquet extends FileFormat
+object DataFormat {
+  case object CSV extends DataFormat
+  case object JSON extends DataFormat
+  case object Parquet extends DataFormat
+  case object Delta extends DataFormat
 }
 
 @main
@@ -22,14 +25,14 @@ case class SparkOption(name: String, value: String)
 case class SparkCopyCfg(
     @arg(
       name = "input-format",
-      doc = "File input format to be used by Spark Datasource API on read"
+      doc = "Data input format to be used by Spark Datasource API on read"
     )
-    inputFormat: FileFormat,
+    inputFormat: DataFormat,
     @arg(
       name = "output-format",
-      doc = "File ouput format to be used by Spark Datasource API on write"
+      doc = "Data ouput format to be used by Spark Datasource API on write"
     )
-    saveFormat: FileFormat,
+    saveFormat: DataFormat,
     @arg(
       name = "move-files",
       doc =
@@ -41,18 +44,25 @@ case class SparkCopyCfg(
       doc = "<name>:<value> list of options to be passed to Spark reader"
     )
     readerOptions: Option[List[SparkOption]],
+    @arg(
+      short = 's',
+      name = "schema-path",
+      doc = "A path to schema directory for all entities as per entityPatterns"
+    )
+    schemaPath: Option[Path],
     fileCopy: FileCopyCfg
 )
 
 object SparkCopyCfg {
-  implicit object FileFormatRead
-      extends TokensReader[FileFormat](
+  implicit object DataFormatRead
+      extends TokensReader[DataFormat](
         "input file or output file/table format",
         strs =>
           strs.head match {
             case "csv"     => Right(CSV)
             case "json"    => Right(JSON)
             case "parquet" => Right(Parquet)
+            case "delta"   => Right(Delta)
             case _         => Left("Unknown file format")
           }
       )

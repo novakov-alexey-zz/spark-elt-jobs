@@ -11,12 +11,17 @@ object FileCopyCfg {
         "entityPattern",
         strs => {
           assert(strs.nonEmpty, "At least one entityPattern must be specified")
-          val pair = strs.head.split(":")
           assert(
             strs.head.contains(":"),
             "entityPattern must contain semicolon as separator of the entity name and pattern"
           )
-          Right(EntityPattern(pair(0), pair(1)))
+          val entity = strs.head.split(":").toList
+          entity match {
+            case name :: pattern :: maybeDedupKey =>
+              Right(EntityPattern(name, pattern, maybeDedupKey.headOption))
+            case _ =>
+              Left(s"entity pattern does not contain name and glob pattern")
+          }
         }
       )
 
@@ -24,7 +29,11 @@ object FileCopyCfg {
 }
 
 @main
-case class EntityPattern(name: String, globPattern: String)
+case class EntityPattern(
+    name: String,
+    globPattern: String,
+    dedupKey: Option[String]
+)
 
 @main
 case class FileCopyCfg(
@@ -41,10 +50,10 @@ case class FileCopyCfg(
     @arg(short = 'd', doc = "DAG id to create sub-folder inside the outputPath")
     dagId: String,
     @arg(
-      name = "glob-pattern",
+      name = "entity-pattern",
       short = 'p',
       doc =
-        "Entity name and and GLOB pattern for 'inputPath' in format <name:pattern>"
+        "Entity name, GLOB pattern and dedupKey for 'inputPath' in format <name:pattern[:dedupKey]>"
     )
     entityPatterns: List[EntityPattern],
     @arg(
