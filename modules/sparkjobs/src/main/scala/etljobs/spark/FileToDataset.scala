@@ -11,6 +11,7 @@ import org.apache.spark.sql.DataFrame
 import io.delta.tables._
 
 import java.nio.file.Path
+import org.apache.spark.sql.types.StructType
 
 object FileToDataset extends App {
   @main
@@ -19,16 +20,11 @@ object FileToDataset extends App {
 
   private def toDeltaTable(
       targetPath: String,
-      targetSchema: Path,
-      entity: EntityPattern,
+      schema: StructType,
       spark: SparkSession,
-      key: String,
+      dedupKey: String,
       inputDF: DataFrame
   ) = {
-    val schema = getSchema(
-      targetSchema,
-      entity.name
-    )
     val target =
       DeltaTable
         .createIfNotExists(spark)
@@ -37,7 +33,9 @@ object FileToDataset extends App {
         .execute()
         .as("target")
     target
-      .merge(inputDF.as("updates"), s"target.$key = updates.$key")
+      .merge(inputDF.as("updates"), s"target.$dedupKey = updates.$dedupKey")
+      .whenMatched()
+      .updateAll()
       .whenNotMatched()
       .insertAll()
       .execute()
@@ -51,15 +49,16 @@ object FileToDataset extends App {
       output: Path,
       saveMode: SaveMode
   ) = {
-    val inputDataReader =
-      spark.read
-        .option("pathGlobFilter", entity.globPattern)
-        .option("inferSchema", "true")
-        .format(cfg.inputFormat.toSparkFormat)
+    val inputDataReader = spark.read.format(cfg.inputFormat.toSparkFormat)
+    val options = List(
+      SparkOption("pathGlobFilter", entity.globPattern),
+      SparkOption("inferSchema", "true")
+    )
     val inputDataWithOptions =
-      cfg.readerOptions.getOrElse(List.empty).foldLeft(inputDataReader) {
-        case (acc, opt) => acc.option(opt.name, opt.value)
-      }
+      (cfg.readerOptions.getOrElse(List.empty) ++ options)
+        .foldLeft(inputDataReader) { case (acc, opt) =>
+          acc.option(opt.name, opt.value)
+        }
 
     val inputDF = inputDataWithOptions.load(input.toString())
 
@@ -76,10 +75,14 @@ object FileToDataset extends App {
             case Some(key) =>
               val schemaPath = cfg.schemaPath.getOrElse(
                 sys.error(
-                  s"struct schema for Delta table $tablePath is required"
+                  s"struct schema for Delta table at '$tablePath' location is required"
                 )
               )
-              toDeltaTable(tablePath, schemaPath, entity, spark, key, inputDF)
+              val schema = getSchema(
+                schemaPath,
+                entity.name
+              )
+              toDeltaTable(tablePath, schema, spark, key, inputDF)
             case None =>
               inputDataToWrite.save(tablePath)
           }
