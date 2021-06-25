@@ -8,32 +8,38 @@ import mainargs.{main, ParserForMethods}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.functions._
 import io.delta.tables._
 
 import java.nio.file.Path
-import org.apache.spark.sql.types.StructType
 
 object FileToDataset extends App {
   @main
   def run(params: SparkCopyCfg) =
     sparkCopy(params)
 
-  private def toDeltaTable(
+  private def mergeTable(
       targetPath: String,
-      schema: StructType,
+      schema: Option[StructType],
       spark: SparkSession,
       dedupKey: String,
-      inputDF: DataFrame
+      input: DataFrame,
+      partitionBy: String
   ) = {
     val target =
       DeltaTable
         .createIfNotExists(spark)
         .location(targetPath)
-        .addColumns(schema)
-        .execute()
-        .as("target")
-    target
-      .merge(inputDF.as("updates"), s"target.$dedupKey = updates.$dedupKey")
+
+    val targetWithSchema = schema
+      .fold(target)(target.addColumns)
+      .partitionedBy(partitionBy)
+      .execute()
+      .as("target")
+
+    targetWithSchema
+      .merge(input.as("updates"), s"target.$dedupKey = updates.$dedupKey")
       .whenMatched()
       .updateAll()
       .whenNotMatched()
@@ -49,42 +55,37 @@ object FileToDataset extends App {
       output: Path,
       saveMode: SaveMode
   ) = {
-    val inputDataReader = spark.read.format(cfg.inputFormat.toSparkFormat)
+    val inputData = spark.read.format(cfg.inputFormat.toSparkFormat)
     val options = List(
       SparkOption("pathGlobFilter", entity.globPattern),
       SparkOption("inferSchema", "true")
     )
     val inputDataWithOptions =
-      (cfg.readerOptions.getOrElse(List.empty) ++ options)
-        .foldLeft(inputDataReader) { case (acc, opt) =>
+      (cfg.readerOptions.getOrElse(Nil) ++ options)
+        .foldLeft(inputData) { case (acc, opt) =>
           acc.option(opt.name, opt.value)
         }
 
-    val inputDF = inputDataWithOptions.load(input.toString())
+    val inputDF = inputDataWithOptions
+      .load(input.toString())
+      .withColumn("date", current_date())
 
-    lazy val inputDataToWrite =
-      inputDF.write.mode(saveMode)
+    lazy val inputDFToWrite =
+      inputDF.write.partitionBy(cfg.partitionBy).mode(saveMode)
 
     val writer = cfg.saveFormat match {
-      case CSV     => inputDataToWrite.csv _
-      case JSON    => inputDataToWrite.json _
-      case Parquet => inputDataToWrite.parquet _
+      case CSV     => inputDFToWrite.csv _
+      case JSON    => inputDFToWrite.json _
+      case Parquet => inputDFToWrite.parquet _
       case Delta if entity.dedupKey.isDefined =>
         tablePath: String =>
-          val schemaPath = cfg.schemaPath.getOrElse(
-            sys.error(
-              s"struct schema for Delta table at '$tablePath' location is required"
-            )
-          )
-          val schema = getSchema(
-            schemaPath,
-            entity.name
-          )
+          lazy val schema = cfg.schemaPath.map(p => getSchema(p, entity.name))
           entity.dedupKey.foreach { key =>
-            toDeltaTable(tablePath, schema, spark, key, inputDF)
+            mergeTable(tablePath, schema, spark, key, inputDF, cfg.partitionBy)
           }
-
-      case _ => p: String => inputDataToWrite.save(p)
+      case _ =>
+        path: String =>
+          inputDFToWrite.format(cfg.saveFormat.toSparkFormat).save(path)
     }
 
     writer(output.toString())
@@ -100,6 +101,7 @@ object FileToDataset extends App {
         "spark.sql.catalog.spark_catalog",
         "org.apache.spark.sql.delta.catalog.DeltaCatalog"
       )
+      .config("spark.databricks.delta.schema.autoMerge.enabled", "true")
       .getOrCreate()
 
     useResource(sparkSession) { spark =>

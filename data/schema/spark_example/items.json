@@ -18,6 +18,12 @@
             "type": "integer",
             "nullable": true,
             "metadata": {}
+        },
+        {
+            "name": "date",
+            "type": "date",
+            "nullable": false,
+            "metadata": {}
         }
     ]
 }

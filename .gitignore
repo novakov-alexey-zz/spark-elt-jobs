@@ -13,3 +13,5 @@ data/dw
 *.crc
 github
 airflow-dir/logs
+metastore_db
+derby.log

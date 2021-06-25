@@ -50,6 +50,11 @@ case class SparkCopyCfg(
       doc = "A path to schema directory for all entities as per entityPatterns"
     )
     schemaPath: Option[Path],
+    @arg(
+      name = "partition-by",
+      doc = "Table column to parition by"
+    )
+    partitionBy: String,
     fileCopy: FileCopyCfg
 )
 

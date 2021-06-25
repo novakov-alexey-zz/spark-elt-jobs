@@ -40,7 +40,7 @@ HADOOP_JOBS_JAR = "{{fromjson(connection.etl_jobs_hadoop_jar.extra)['path']}}"
 INPUT_SCHEMA = "{{fromjson(connection.input_schemas.extra)['path']}}"
 
 
-def etl_job_args(input_path: str, output_path: str, entity_patterns: List[EntityPattern]) -> List[str]:
+def common_args(input_path: str, output_path: str, entity_patterns: List[EntityPattern]) -> List[str]:
     args = ["-i",
             input_path,
             "-o",
@@ -54,8 +54,8 @@ def etl_job_args(input_path: str, output_path: str, entity_patterns: List[Entity
 
     for e in entity_patterns:
         dedupKey = ("" if e.dedupKey is None else ":" + e.dedupKey)
-        args = args + ["--entity-pattern", e.name +
-                       ":" + e.pattern + "_*{{ ds }}.csv" + dedupKey]
+        pattern = e.name + ":" + e.pattern + "_*{{ ds }}.csv" + dedupKey
+        args = args + ["--entity-pattern", pattern]
 
     return args
 
@@ -71,11 +71,11 @@ def spark_stream_job(task_id: str, entity_patterns: List[EntityPattern]) -> Base
 def spark_copy(task_id: str, entity_patterns: List[EntityPattern], main_class: str) -> BaseOperator:
     input_schema_path = ["-s", INPUT_SCHEMA + "/" + "{{dag.dag_id}}"]
     formats = ["--input-format", "csv", "--output-format", "delta"]
-
+    partitioning = ["--partition-by", "date"]
     reader_options = ["--reader-options", "header:true"]
     copy_args = formats + \
-        etl_job_args(LOCAL_RAW_DATA, LOCAL_DATAWAREHOUSE, entity_patterns) + \
-        ["--move-files"] + input_schema_path + reader_options
+        common_args(LOCAL_RAW_DATA, LOCAL_DATAWAREHOUSE, entity_patterns) + \
+        ["--move-files"] + input_schema_path + reader_options + partitioning
 
     return SparkSubmitOperator(
         task_id=task_id,
@@ -88,7 +88,7 @@ def spark_copy(task_id: str, entity_patterns: List[EntityPattern], main_class: s
         executor_memory='2g',
         num_executors='1',
         name=task_id,
-        verbose=True,
+        verbose=False,
         driver_memory='1g',
         dag=dag
     )
@@ -101,8 +101,8 @@ def mkString(l: List[str], sep: str = ' ') -> str:
 def hadoop_copy(task_id: str, entity_patterns: List[EntityPattern]) -> BaseOperator:
     output_path = LOCAL_RAW_DATA
     processed_dir = ["--processed-dir", LOCAL_INPUT + "/processed"]
-    args_list = etl_job_args(LOCAL_INPUT, output_path,
-                             entity_patterns) + processed_dir
+    args_list = common_args(LOCAL_INPUT, output_path,
+                            entity_patterns) + processed_dir
     args = mkString(args_list)
 
     return BashOperator(
