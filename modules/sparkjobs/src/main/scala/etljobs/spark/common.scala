@@ -1,18 +1,33 @@
 package etljobs.spark
 
 import etljobs.common.FsUtil._
-import etljobs.common.EntityPattern
+import etljobs.common.{EntityPattern, FileCopyCfg, SparkOption}
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FileSystem
-
-import java.nio.file.Path
-import scala.io.Source
 import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.types.StructType
-import etljobs.common.FileCopyCfg
+import org.apache.spark.sql.SparkSession
+
+import scala.io.Source
+import java.net.URI
 
 object common {
+
+  val SparkOptions = Map(
+    "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension",
+    "spark.sql.catalog.spark_catalog" -> "org.apache.spark.sql.delta.catalog.DeltaCatalog",
+    "spark.databricks.delta.schema.autoMerge.enabled" -> "true"
+  )
+
+  def sparkWithConfig(
+      hadoopConfig: List[SparkOption]
+  ): SparkSession.Builder = {
+    val hadoop = hadoopConfig.map(c => c.name -> c.value).toMap
+    (hadoop ++ SparkOptions).foldLeft(SparkSession.builder) {
+      case (acc, (name, value)) =>
+        acc.config(name, value)
+    }
+  }
 
   def useResource[T <: AutoCloseable](r: T)(f: T => Unit) =
     try f(r)
@@ -22,25 +37,25 @@ object common {
     cfg.moveFiles.value || cfg.fileCopy.processedDir.isDefined
 
   def moveFiles(
+      conf: Configuration,
       entityPatterns: List[EntityPattern],
-      processedDir: Option[Path],
-      input: Path
+      processedDir: Option[URI],
+      input: URI
   ) = {
     val dest =
       processedDir.getOrElse(input.resolve("processed"))
-    val fs = FileSystem.get(new Configuration())
     entityPatterns.foreach { p =>
       val srcFiles =
-        listFiles(p.globPattern, input)
+        listFiles(conf, p.globPattern, input)
       println(s"moving files: ${srcFiles.mkString(",\n")} to $dest")
-      srcFiles.foreach(src => moveFile(src, dest, fs))
+      srcFiles.foreach(src => moveFile(src, dest, conf))
     }
   }
 
-  def getSchema(schemaPath: Path, entityName: String): StructType = {
+  def getSchema(schemaPath: URI, entityName: String): StructType = {
     val jsonSchema =
       Source
-        .fromFile(schemaPath.resolve(s"$entityName.json").toFile())
+        .fromFile(schemaPath.resolve(s"$entityName.json"))
         .getLines
         .mkString
     DataType.fromJson(jsonSchema).asInstanceOf[StructType]
@@ -52,7 +67,9 @@ object common {
         fileCopy.dagId,
         fileCopy.executionDate
       )
-    val output = contextDir(fileCopy.outputPath, context)
+    val output =
+      fileCopy.outputPath.resolve(fileCopy.dagId)
+
     val input = contextDir(fileCopy.inputPath, context)
     (input, output)
   }

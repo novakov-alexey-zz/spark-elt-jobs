@@ -2,14 +2,15 @@ package etljobs.common
 
 import mainargs.TokensReader
 import java.time.LocalDate
-import java.nio.file.Path
+import java.net.URI
 
 object MainArgsUtil {
-  implicit object PathRead
-      extends TokensReader[Path](
-        "path",
-        strs => Right(Path.of(strs.head))
+  implicit object UriRead
+      extends TokensReader[URI](
+        "uri",
+        strs => Right(new URI(strs.head))
       )
+
   implicit object DateRead
       extends TokensReader[LocalDate](
         "localDate",

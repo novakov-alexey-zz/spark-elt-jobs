@@ -1,12 +1,14 @@
 package etljobs.hadoop
 
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, FileUtil, Path => HPath}
-import mainargs.{main, ParserForMethods}
-import etljobs.common.FileCopyCfg
+import etljobs.common.{FileCopyCfg, HadoopCfg}
 import etljobs.common.FsUtil.{listFiles, contextDir, moveFile}
 import etljobs.common.FsUtil.JobContext
-import java.io.File
+
+import org.apache.hadoop.fs.{FileSystem, FileUtil, Path => HPath}
+import mainargs.{main, ParserForMethods}
+
+import java.nio.file.Path
+import java.net.URI
 
 object FileToFile extends App {
   @main
@@ -14,24 +16,32 @@ object FileToFile extends App {
     hadoopCopy(params)
 
   def hadoopCopy(cfg: FileCopyCfg) = {
-    val srcFiles = cfg.entityPatterns.foldLeft(Array.empty[File]) {
-      (acc, p) =>
-        acc ++ listFiles(p.globPattern, cfg.inputPath)
+    val conf = HadoopCfg.get(cfg.hadoopConfig)
+    println(cfg.hadoopConfig.mkString("\n"))
+    val srcFiles = cfg.entityPatterns.foldLeft(Array.empty[URI]) { (acc, p) =>
+      acc ++ listFiles(conf, p.globPattern, cfg.inputPath)
     }
-    println(s"Found files:\n${srcFiles.mkString("\n")}")
+    val foundFiles =
+      if (srcFiles.nonEmpty) srcFiles.mkString("\n") else "<empty list>"
+    println(s"Found files:\n${foundFiles}")
 
     val output = contextDir(
       cfg.outputPath,
       JobContext(cfg.dagId, cfg.executionDate)
     )
-    lazy val fs = FileSystem.get(new Configuration())
+
     srcFiles.foreach { src =>
-      val destPath = new HPath(output.resolve(src.getName()).toString())
-      fs.delete(destPath, false)
-      FileUtil.copy(src, fs, destPath, false, fs.getConf())
+      val srcFs = FileSystem.get(src, conf)
+      val srcPath = new HPath(src.toString())
+      val fileName = Path.of(src.getPath()).getFileName.toString()
+      val destPath = new HPath(output.resolve(fileName).toString())
+      val destFs = FileSystem.get(output, conf)
+
+      FileSystem.get(output, conf).delete(destPath, false)
+      FileUtil.copy(srcFs, srcPath, destFs, destPath, false, conf)
 
       cfg.processedDir.foreach { dest =>
-        moveFile(src, dest, fs)
+        moveFile(src, dest, conf)
       }
     }
   }

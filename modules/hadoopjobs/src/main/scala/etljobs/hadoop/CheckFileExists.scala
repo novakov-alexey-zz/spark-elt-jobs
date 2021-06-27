@@ -1,15 +1,16 @@
 package etljobs.hadoop
 
 import mainargs.{main, ParserForMethods, ParserForClass, arg}
-import java.nio.file.Path
 import etljobs.common.MainArgsUtil._
-import java.time.LocalDate
 import etljobs.common.FsUtil.JobContext
-import etljobs.common.FsUtil
+import etljobs.common.{FsUtil, SparkOption, HadoopCfg}
 
-case class Params(
+import java.time.LocalDate
+import java.net.URI
+
+case class CheckCfg(
     @arg(short = 'i', doc = "Path to input directory")
-    inputPath: Path,
+    inputPath: URI,
     @arg(
       name = "execution-date",
       doc =
@@ -28,11 +29,17 @@ case class Params(
       doc =
         "file prefixes to check if they exist in 'inputPath' for a specific 'execution-date'"
     )
-    filePrefixes: List[String]
+    filePrefixes: List[String],
+    @arg(
+      name = "hadoop-config",
+      doc =
+        "<name>:<value> list of options to be passed to hadoop configuration"
+    )
+    hadoopConfig: List[SparkOption]
 )
 
-object Params {
-  implicit def paramsParser = ParserForClass[Params]
+object CheckCfg {
+  implicit def cfgParser = ParserForClass[CheckCfg]
 }
 
 object CheckFileExists extends App {
@@ -40,16 +47,17 @@ object CheckFileExists extends App {
   val FilesAbsentCode = 99
 
   @main
-  def run(params: Params) = {
+  def run(cfg: CheckCfg) = {
     val targetPath = FsUtil.contextDir(
-      params.inputPath,
-      JobContext(params.dagId, params.executionDate)
+      cfg.inputPath,
+      JobContext(cfg.dagId, cfg.executionDate)
     )
-    val inputFiles = FsUtil.listFiles(params.globPattern, targetPath)
+    val conf = HadoopCfg.get(cfg.hadoopConfig)
+    val inputFiles = FsUtil.listFiles(conf, cfg.globPattern, targetPath)
     println(s"input files: ${inputFiles.mkString("\n")}")
-    val inputNames = inputFiles.map(_.getName())
+    val inputNames = inputFiles.map(_.toString())
     val filesExist =
-      params.filePrefixes.forall(p => inputNames.exists(_.startsWith(p)))
+      cfg.filePrefixes.forall(p => inputNames.exists(_.startsWith(p)))
     println(s"all file exist: $filesExist")
     val ec = if (filesExist) FilesExistCode else FilesAbsentCode
     System.exit(ec)

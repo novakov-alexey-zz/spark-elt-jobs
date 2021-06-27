@@ -18,6 +18,7 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
     libraryDependencies ++= Seq(
       sparkSql % Provided,
       delta,
+      hadoopAws,
       scalaTest % Test
     ),
     assemblyPackageScala / assembleArtifact := false,
@@ -26,7 +27,7 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
     val spark =
       SparkSession.builder
         .appName("sbt-shell")
-        .master("local")
+        .master("local[*]")
         .getOrCreate()
     """.stripMargin,
     // uses compile classpath for the run task, including "provided" jar (cf http://stackoverflow.com/a/21803413/3827)
@@ -50,12 +51,15 @@ lazy val hadoopJobs = (project in file("./modules/hadoopjobs"))
       case PathList("scala", "annotation", xs @ _*)
           if xs.headOption.exists(_.startsWith("nowarn")) =>
         MergeStrategy.first
+      case PathList(ps @ _*) if ps.last endsWith "public-suffix-list.txt" =>
+        MergeStrategy.concat
       case x =>
         val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
         oldStrategy(x)
     },
     libraryDependencies ++= Seq(
-      hadoopCommon
+      hadoopCommon,
+      hadoopAws
     )
   )
 

@@ -1,36 +1,45 @@
 package etljobs.common
 
-import org.apache.hadoop.fs.{FileSystem, FileUtil, Path => HPath, GlobFilter}
-import java.nio.file.Path
-import java.io.File
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, FileUtil, Path => HPath}
+
 import java.time.LocalDate
+import java.net.URI
+import java.nio.file.Path
 
 object FsUtil {
 
-  def listFiles(globPattern: String, inputPath: Path): Array[File] = {
-    val dir = inputPath.toFile()
-    if (dir.exists()) {
-      val filter = new GlobFilter(globPattern)
-      FileUtil
-        .listFiles(dir)
-        .filter(f => filter.accept(new HPath(f.toString())))
-    } else
-      Array.empty[File]
+  def listFiles(
+      conf: Configuration,
+      globPattern: String,
+      inputPath: URI
+  ): Array[URI] = {
+    val fs = FileSystem.get(inputPath, conf)
+    val path = new HPath(inputPath.resolve("/").resolve(globPattern).toString())
+    println(s"list in path: $path")
+    val statuses = fs.globStatus(path)
+    statuses.map(_.getPath().toUri())
   }
 
-  def moveFile(src: File, destinationDir: Path, fs: FileSystem): Boolean = {
+  def moveFile(src: URI, destinationDir: URI, conf: Configuration): Boolean = {
+    val fileName = Path.of(src.getPath()).getFileName
     val processedPath = new HPath(
-      destinationDir.resolve(src.getName()).toString()
+      destinationDir.resolve(fileName.toString()).toString()
     )
-    FileUtil.copy(src, fs, processedPath, true, fs.getConf())
+    val srcFs = FileSystem.get(src, conf)
+    val destFs = FileSystem.get(processedPath.toUri(), conf)
+    FileUtil.copy(
+      srcFs,
+      new HPath(src.toString()),
+      destFs,
+      processedPath,
+      true,
+      conf
+    )
   }
 
   case class JobContext(dagId: String, executionDate: LocalDate)
 
-  def contextDir(rootDir: Path, ctx: JobContext): Path =
-    Path.of(
-      rootDir.toString(),
-      ctx.dagId,
-      ctx.executionDate.toString
-    )
+  def contextDir(rootDir: URI, ctx: JobContext): URI =
+    rootDir.resolve(ctx.dagId).resolve(ctx.executionDate.toString)
 }

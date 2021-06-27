@@ -1,12 +1,9 @@
 package etljobs.spark
 
 import common._
+import etljobs.common.HadoopCfg
 
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.streaming.OutputMode
-import org.apache.spark.sql.streaming.Trigger
-import org.apache.spark.sql.streaming.StreamingQuery
-
+import org.apache.spark.sql.streaming.{OutputMode, Trigger, StreamingQuery}
 import mainargs.{ParserForMethods, main}
 
 object FileStreamToDataset extends App {
@@ -20,8 +17,8 @@ object FileStreamToDataset extends App {
   @main
   def run(cfg: SparkCopyCfg) = {
     val (input, output) = getInOutPaths(cfg.fileCopy)
+    val sparkSession = sparkWithConfig(cfg.fileCopy.hadoopConfig).getOrCreate()
 
-    val sparkSession = SparkSession.builder.getOrCreate()
     useResource(sparkSession) { spark =>
       val queries = cfg.fileCopy.entityPatterns.map { entity =>
         val schema = getSchema(
@@ -59,12 +56,15 @@ object FileStreamToDataset extends App {
         waitForTermination(queries)
     }
 
-    if (requireMove(cfg))
+    if (requireMove(cfg)) {
+      val conf = HadoopCfg.get(cfg.fileCopy.hadoopConfig)
       moveFiles(
+        conf,
         cfg.fileCopy.entityPatterns,
         cfg.fileCopy.processedDir,
         input
       )
+    }
   }
 
   ParserForMethods(this).runOrExit(args)

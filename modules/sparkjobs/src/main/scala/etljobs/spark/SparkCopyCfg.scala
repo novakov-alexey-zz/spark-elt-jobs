@@ -1,10 +1,12 @@
 package etljobs.spark
 
-import mainargs.{main, arg, Flag, TokensReader, ParserForClass}
-import etljobs.common.FileCopyCfg
-import etljobs.common.MainArgsUtil.PathRead
+import etljobs.common.{FileCopyCfg, SparkOption}
+import etljobs.common.MainArgsUtil.UriRead
 import DataFormat._
-import java.nio.file.Path
+
+import mainargs.{main, arg, Flag, TokensReader, ParserForClass}
+
+import java.net.URI
 
 sealed trait DataFormat {
   def toSparkFormat: String =
@@ -17,9 +19,6 @@ object DataFormat {
   case object Parquet extends DataFormat
   case object Delta extends DataFormat
 }
-
-@main
-case class SparkOption(name: String, value: String)
 
 @main
 case class SparkCopyCfg(
@@ -49,12 +48,12 @@ case class SparkCopyCfg(
       name = "schema-path",
       doc = "A path to schema directory for all entities as per entityPatterns"
     )
-    schemaPath: Option[Path],
+    schemaPath: Option[URI],
     @arg(
       name = "partition-by",
       doc = "Table column to parition by"
     )
-    partitionBy: String,
+    partitionBy: String,    
     fileCopy: FileCopyCfg
 )
 
@@ -69,22 +68,6 @@ object SparkCopyCfg {
             case "parquet" => Right(Parquet)
             case "delta"   => Right(Delta)
             case _         => Left("Unknown file format")
-          }
-      )
-  implicit object SparkOptionRead
-      extends TokensReader[SparkOption](
-        "input file or output file/table format",
-        strs =>
-          strs.headOption.map(_.split(":").toList) match {
-            case Some(l) =>
-              l match {
-                case name :: value :: _ => Right(SparkOption(name, value))
-                case _ =>
-                  Left(
-                    "Reader option must have name and value separated by colon ':', example '<name>:<value>'"
-                  )
-              }
-            case _ => Left("There must be at least one reader option")
           }
       )
 
