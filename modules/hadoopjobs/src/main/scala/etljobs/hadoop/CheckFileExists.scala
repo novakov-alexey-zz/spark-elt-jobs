@@ -7,6 +7,7 @@ import etljobs.common.{FsUtil, SparkOption, HadoopCfg}
 
 import java.time.LocalDate
 import java.net.URI
+import java.nio.file.Path
 
 case class CheckCfg(
     @arg(short = 'i', doc = "Path to input directory")
@@ -54,8 +55,9 @@ object CheckFileExists extends App {
     )
     val conf = HadoopCfg.get(cfg.hadoopConfig)
     val inputFiles = FsUtil.listFiles(conf, cfg.globPattern, targetPath)
-    println(s"input files: ${inputFiles.mkString("\n")}")
-    val inputNames = inputFiles.map(_.toString())
+    println(s"input files:\n${inputFiles.mkString("\n")}")
+    val inputNames =
+      inputFiles.map(uri => Path.of(uri.toString()).getFileName().toString())
     val filesExist =
       cfg.filePrefixes.forall(p => inputNames.exists(_.startsWith(p)))
     println(s"all file exist: $filesExist")

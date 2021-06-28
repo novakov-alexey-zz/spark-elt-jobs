@@ -145,6 +145,7 @@ def check_files_task(entity_patterns: List[EntityPattern]) -> BaseOperator:
     file_prefixes_args = ["--file-prefixes " +
                           p.pattern for p in entity_patterns]
 
+    hadoop_opts = hadoop_cfg(hadoop_options())
     check_file_args_list = [
         "-i",
         LOCAL_RAW_DATA,
@@ -154,7 +155,7 @@ def check_files_task(entity_patterns: List[EntityPattern]) -> BaseOperator:
         "{{dag.dag_id}}",
         "--glob-pattern",
         "*_{{ ds }}.csv"
-    ] + file_prefixes_args
+    ] + file_prefixes_args + hadoop_opts
 
     check_file_args = mkString(check_file_args_list)
 

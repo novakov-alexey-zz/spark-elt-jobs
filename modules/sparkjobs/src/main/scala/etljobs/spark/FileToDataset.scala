@@ -2,7 +2,7 @@ package etljobs.spark
 
 import DataFormat._
 import common._
-import etljobs.common.{EntityPattern, SparkOption, HadoopCfg}
+import etljobs.common.{EntityPattern, SparkOption}
 
 import mainargs.{main, ParserForMethods}
 import org.apache.spark.sql.SparkSession
@@ -79,7 +79,14 @@ object FileToDataset extends App {
       case Parquet => inputDFToWrite.parquet _
       case Delta if entity.dedupKey.isDefined =>
         tablePath: String =>
-          lazy val schema = cfg.schemaPath.map(p => getSchema(p, entity.name))
+          lazy val schema =
+            cfg.schemaPath.map(path =>
+              getSchema(
+                spark.sparkContext.hadoopConfiguration,
+                path,
+                entity.name
+              )
+            )
           entity.dedupKey.foreach { key =>
             mergeTable(tablePath, schema, spark, key, inputDF, cfg.partitionBy)
           }
@@ -92,24 +99,21 @@ object FileToDataset extends App {
   }
 
   def sparkCopy(cfg: SparkCopyCfg) = {
-    val (input, output) = getInOutPaths(cfg.fileCopy)
-    println(s"input path: $input")
+    val (input, output) = getInOutPaths(cfg.fileCopy) 
     val sparkSession =
       sparkWithConfig(cfg.fileCopy.hadoopConfig).getOrCreate()
 
     useResource(sparkSession) { spark =>
-      lazy val saveMode = getSaveMode(cfg.fileCopy.overwrite.value)
+      lazy val saveMode = getSaveMode(cfg.fileCopy.overwrite.value)      
 
       cfg.fileCopy.entityPatterns.foreach { p =>
-        val entityOutPath = output.resolve(p.name)
-        println(s"output path: $entityOutPath")
+        val entityOutPath = new URI(s"$output/${p.name}")        
         loadFileToSpark(p, spark, cfg, input, entityOutPath, saveMode)
       }
 
       if (requireMove(cfg)) {
-        val conf = HadoopCfg.get(cfg.fileCopy.hadoopConfig)
         moveFiles(
-          conf,
+          spark.sparkContext.hadoopConfiguration,
           cfg.fileCopy.entityPatterns,
           cfg.fileCopy.processedDir,
           input

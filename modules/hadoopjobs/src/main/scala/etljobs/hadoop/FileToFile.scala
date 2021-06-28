@@ -17,25 +17,25 @@ object FileToFile extends App {
 
   def hadoopCopy(cfg: FileCopyCfg) = {
     val conf = HadoopCfg.get(cfg.hadoopConfig)
-    println(cfg.hadoopConfig.mkString("\n"))
     val srcFiles = cfg.entityPatterns.foldLeft(Array.empty[URI]) { (acc, p) =>
       acc ++ listFiles(conf, p.globPattern, cfg.inputPath)
     }
     val foundFiles =
-      if (srcFiles.nonEmpty) srcFiles.mkString("\n") else "<empty list>"
-    println(s"Found files:\n${foundFiles}")
+      if (srcFiles.nonEmpty) "\n" + srcFiles.mkString("\n")
+      else "<empty list>"
+    println(s"Found files: ${foundFiles}")
 
     val output = contextDir(
       cfg.outputPath,
       JobContext(cfg.dagId, cfg.executionDate)
     )
 
+    lazy val destFs = FileSystem.get(output, conf)
     srcFiles.foreach { src =>
       val srcFs = FileSystem.get(src, conf)
       val srcPath = new HPath(src.toString())
       val fileName = Path.of(src.getPath()).getFileName.toString()
-      val destPath = new HPath(output.resolve(fileName).toString())
-      val destFs = FileSystem.get(output, conf)
+      val destPath = new HPath(s"$output/$fileName")
 
       FileSystem.get(output, conf).delete(destPath, false)
       FileUtil.copy(srcFs, srcPath, destFs, destPath, false, conf)

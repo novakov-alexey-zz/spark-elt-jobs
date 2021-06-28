@@ -18,10 +18,12 @@ object FileStreamToDataset extends App {
   def run(cfg: SparkCopyCfg) = {
     val (input, output) = getInOutPaths(cfg.fileCopy)
     val sparkSession = sparkWithConfig(cfg.fileCopy.hadoopConfig).getOrCreate()
+    lazy val conf = HadoopCfg.get(cfg.fileCopy.hadoopConfig)
 
     useResource(sparkSession) { spark =>
       val queries = cfg.fileCopy.entityPatterns.map { entity =>
         val schema = getSchema(
+          conf,
           cfg.schemaPath.getOrElse(
             sys.error(
               s"struct schema is required for streaming query to load '${entity.name}'' entity"
@@ -57,7 +59,6 @@ object FileStreamToDataset extends App {
     }
 
     if (requireMove(cfg)) {
-      val conf = HadoopCfg.get(cfg.fileCopy.hadoopConfig)
       moveFiles(
         conf,
         cfg.fileCopy.entityPatterns,

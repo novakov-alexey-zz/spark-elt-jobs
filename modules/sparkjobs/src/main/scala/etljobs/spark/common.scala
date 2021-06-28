@@ -7,6 +7,8 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.SparkSession
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
 
 import scala.io.Source
 import java.net.URI
@@ -29,11 +31,11 @@ object common {
     }
   }
 
-  def useResource[T <: AutoCloseable](r: T)(f: T => Unit) =
+  def useResource[T <: AutoCloseable, U](r: T)(f: T => U): U =
     try f(r)
     finally r.close()
 
-  def requireMove(cfg: SparkCopyCfg) =
+  def requireMove(cfg: SparkCopyCfg): Boolean =
     cfg.moveFiles.value || cfg.fileCopy.processedDir.isDefined
 
   def moveFiles(
@@ -41,9 +43,9 @@ object common {
       entityPatterns: List[EntityPattern],
       processedDir: Option[URI],
       input: URI
-  ) = {
+  ): Unit = {
     val dest =
-      processedDir.getOrElse(input.resolve("processed"))
+      processedDir.getOrElse(new URI(s"$input/processed"))
     entityPatterns.foreach { p =>
       val srcFiles =
         listFiles(conf, p.globPattern, input)
@@ -52,24 +54,29 @@ object common {
     }
   }
 
-  def getSchema(schemaPath: URI, entityName: String): StructType = {
-    val jsonSchema =
+  def getSchema(
+      conf: Configuration,
+      schemaPath: URI,
+      entityName: String
+  ): StructType = {
+    val fs = FileSystem.get(conf)
+    val in = fs.open(new Path(s"$schemaPath/$entityName.json"))
+    val jsonSchema = useResource(in) { stream =>
       Source
-        .fromFile(schemaPath.resolve(s"$entityName.json"))
+        .fromInputStream(stream)
         .getLines
         .mkString
+    }
     DataType.fromJson(jsonSchema).asInstanceOf[StructType]
   }
 
-  def getInOutPaths(fileCopy: FileCopyCfg) = {
+  def getInOutPaths(fileCopy: FileCopyCfg): (URI, URI) = {
     val context =
       JobContext(
         fileCopy.dagId,
         fileCopy.executionDate
       )
-    val output =
-      fileCopy.outputPath.resolve(fileCopy.dagId)
-
+    val output = new URI(s"${fileCopy.outputPath}/${fileCopy.dagId}")
     val input = contextDir(fileCopy.inputPath, context)
     (input, output)
   }

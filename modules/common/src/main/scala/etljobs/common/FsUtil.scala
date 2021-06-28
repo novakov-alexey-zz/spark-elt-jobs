@@ -15,24 +15,23 @@ object FsUtil {
       inputPath: URI
   ): Array[URI] = {
     val fs = FileSystem.get(inputPath, conf)
-    val path = new HPath(inputPath.resolve("/").resolve(globPattern).toString())
-    println(s"list in path: $path")
+    val path = new HPath(s"$inputPath/$globPattern")    
     val statuses = fs.globStatus(path)
     statuses.map(_.getPath().toUri())
   }
 
   def moveFile(src: URI, destinationDir: URI, conf: Configuration): Boolean = {
-    val fileName = Path.of(src.getPath()).getFileName
-    val processedPath = new HPath(
-      destinationDir.resolve(fileName.toString()).toString()
-    )
+    val fileName = Path.of(src.toString()).getFileName.toString()
+    val destPath = new HPath(s"$destinationDir/$fileName")
     val srcFs = FileSystem.get(src, conf)
-    val destFs = FileSystem.get(processedPath.toUri(), conf)
+    val srcPath = new HPath(src.toString())
+    val destFs = FileSystem.get(destPath.toUri(), conf)
+
     FileUtil.copy(
       srcFs,
-      new HPath(src.toString()),
+      srcPath,
       destFs,
-      processedPath,
+      destPath,
       true,
       conf
     )
@@ -41,5 +40,7 @@ object FsUtil {
   case class JobContext(dagId: String, executionDate: LocalDate)
 
   def contextDir(rootDir: URI, ctx: JobContext): URI =
-    rootDir.resolve(ctx.dagId).resolve(ctx.executionDate.toString)
+    new URI(
+      s"$rootDir/${ctx.dagId}/${ctx.executionDate.toString()}"
+    )
 }
