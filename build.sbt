@@ -18,9 +18,8 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
     libraryDependencies ++= Seq(
       sparkSql % Provided,
       delta,
-      hadoopAws,
       scalaTest % Test
-    ),
+    ) ++ hadoopS3Dependencies,
     assemblyPackageScala / assembleArtifact := false,
     console / initialCommands := s"""
     import org.apache.spark.sql.SparkSession
@@ -43,6 +42,12 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
       .evaluated
   )
 
+lazy val hadoopS3Dependencies = Seq(
+  hadoopAws,
+  awsS3Sdk,
+  awsDynmodbSdk
+)
+
 lazy val hadoopJobs = (project in file("./modules/hadoopjobs"))
   .dependsOn(common)
   .settings(
@@ -58,9 +63,8 @@ lazy val hadoopJobs = (project in file("./modules/hadoopjobs"))
         oldStrategy(x)
     },
     libraryDependencies ++= Seq(
-      hadoopCommon,
-      hadoopAws
-    )
+      hadoopCommon
+    ) ++ hadoopS3Dependencies
   )
 
 lazy val common = (project in file("./modules/common")).settings(
