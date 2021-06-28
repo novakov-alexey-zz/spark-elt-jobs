@@ -176,12 +176,12 @@ entity_patterns = [
 
 extract_file_task = hadoop_copy('file-2-location', [EntityPattern('all', '*')])
 check_files = check_files_task(entity_patterns)
-files_to_dataset = spark_batch_job(
-    'file-2-dataset', entity_patterns)
-# files_stream_to_dataset = spark_stream_job(
-#     'file-stream-2-dataset', entity_patterns)
+# files_to_dataset = spark_batch_job(
+# 'file-2-dataset', entity_patterns)
+files_stream_to_dataset = spark_stream_job(
+    'file-stream-2-dataset', entity_patterns)
 
-extract_file_task >> check_files >> files_to_dataset
+extract_file_task >> check_files >> files_stream_to_dataset
 
 if __name__ == "__main__":
     dag.cli()

@@ -106,9 +106,9 @@ object FileToDataset extends App {
     useResource(sparkSession) { spark =>
       lazy val saveMode = getSaveMode(cfg.fileCopy.overwrite.value)      
 
-      cfg.fileCopy.entityPatterns.foreach { p =>
-        val entityOutPath = new URI(s"$output/${p.name}")        
-        loadFileToSpark(p, spark, cfg, input, entityOutPath, saveMode)
+      cfg.fileCopy.entityPatterns.foreach { entity =>
+        val entityOutPath = new URI(s"$output/${entity.name}")        
+        loadFileToSpark(entity, spark, cfg, input, entityOutPath, saveMode)
       }
 
       if (requireMove(cfg)) {

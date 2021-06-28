@@ -49,7 +49,7 @@ object common {
     entityPatterns.foreach { p =>
       val srcFiles =
         listFiles(conf, p.globPattern, input)
-      println(s"moving files: ${srcFiles.mkString(",\n")} to $dest")
+      println(s"moving files: ${srcFiles.mkString(",\n")}\nto $dest")
       srcFiles.foreach(src => moveFile(src, dest, conf))
     }
   }

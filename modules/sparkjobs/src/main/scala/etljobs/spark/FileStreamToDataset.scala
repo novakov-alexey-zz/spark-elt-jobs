@@ -5,6 +5,7 @@ import etljobs.common.HadoopCfg
 
 import org.apache.spark.sql.streaming.{OutputMode, Trigger, StreamingQuery}
 import mainargs.{ParserForMethods, main}
+import java.net.URI
 
 object FileStreamToDataset extends App {
 
@@ -41,8 +42,8 @@ object FileStreamToDataset extends App {
           }
         val df = streamWithOptions.load(input.toString())
 
-        val outputPath = output.resolve(entity.name)
-        val checkpointPath = outputPath.resolve("_checkpoints")
+        val outputPath = new URI(s"$output/${entity.name}")
+        val checkpointPath = new URI(s"$outputPath/_checkpoints")
         println(
           s"starting stream for input '${input}' to output '${outputPath}'"
         )
