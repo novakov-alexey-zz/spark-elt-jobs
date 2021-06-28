@@ -40,7 +40,12 @@ object FileStreamToDataset extends App {
           cfg.readerOptions.getOrElse(List.empty).foldLeft(stream) {
             case (acc, opt) => acc.option(opt.name, opt.value)
           }
-        val df = streamWithOptions.load(input.toString())
+        val df = streamWithOptions
+          .load(input.toString())
+          .withColumn(
+            "date",
+            dateLit(cfg.fileCopy.executionDate)
+          )
 
         val outputPath = new URI(s"$output/${entity.name}")
         val checkpointPath = new URI(s"$outputPath/_checkpoints")
@@ -50,6 +55,7 @@ object FileStreamToDataset extends App {
         df.writeStream
           .outputMode(OutputMode.Append)
           .option("checkpointLocation", checkpointPath.toString())
+          .partitionBy(cfg.partitionBy)
           .trigger(Trigger.Once)
           .format(cfg.saveFormat.toSparkFormat)
           .start(outputPath.toString())

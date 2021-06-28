@@ -9,7 +9,6 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.functions._
 import io.delta.tables._
 
 import java.net.URI
@@ -68,7 +67,7 @@ object FileToDataset extends App {
 
     val inputDF = inputDataWithOptions
       .load(input.toString())
-      .withColumn("date", current_date())
+      .withColumn("date", dateLit(cfg.fileCopy.executionDate))
 
     lazy val inputDFToWrite =
       inputDF.write.partitionBy(cfg.partitionBy).mode(saveMode)
@@ -99,15 +98,15 @@ object FileToDataset extends App {
   }
 
   def sparkCopy(cfg: SparkCopyCfg) = {
-    val (input, output) = getInOutPaths(cfg.fileCopy) 
+    val (input, output) = getInOutPaths(cfg.fileCopy)
     val sparkSession =
       sparkWithConfig(cfg.fileCopy.hadoopConfig).getOrCreate()
 
     useResource(sparkSession) { spark =>
-      lazy val saveMode = getSaveMode(cfg.fileCopy.overwrite.value)      
+      lazy val saveMode = getSaveMode(cfg.fileCopy.overwrite.value)
 
       cfg.fileCopy.entityPatterns.foreach { entity =>
-        val entityOutPath = new URI(s"$output/${entity.name}")        
+        val entityOutPath = new URI(s"$output/${entity.name}")
         loadFileToSpark(entity, spark, cfg, input, entityOutPath, saveMode)
       }
 

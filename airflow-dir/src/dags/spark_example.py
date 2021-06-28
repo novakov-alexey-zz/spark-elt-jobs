@@ -101,7 +101,7 @@ def spark_copy(task_id: str, entity_patterns: List[EntityPattern], main_class: s
     common = common_args(LOCAL_RAW_DATA, LOCAL_DATAWAREHOUSE, entity_patterns)
     copy_args = formats + common + \
         ["--move-files"] + input_schema_path + \
-        reader_options + spark_hadoop_options + partitioning
+        reader_options + partitioning + spark_hadoop_options
 
     return SparkSubmitOperator(
         task_id=task_id,

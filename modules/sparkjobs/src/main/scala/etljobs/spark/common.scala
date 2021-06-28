@@ -7,11 +7,14 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.spark.sql.types.DataType
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.lit
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 
 import scala.io.Source
 import java.net.URI
+import java.time.format.DateTimeFormatter
+import java.time.LocalDate
 
 object common {
 
@@ -20,6 +23,11 @@ object common {
     "spark.sql.catalog.spark_catalog" -> "org.apache.spark.sql.delta.catalog.DeltaCatalog",
     "spark.databricks.delta.schema.autoMerge.enabled" -> "true"
   )
+
+  val DateFormatter = DateTimeFormatter.ofPattern("YYYY-MM-dd")
+
+  def dateLit(date: LocalDate) =
+    lit(date.format(DateFormatter))
 
   def sparkWithConfig(
       hadoopConfig: List[SparkOption]
