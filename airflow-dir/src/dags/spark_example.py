@@ -68,6 +68,10 @@ class CheckFileCfg:
             "--glob-pattern",
             self.glob_pattern
         ]
+        
+        for p in self.file_prefixes:
+            args.append("--file-prefixes")
+            args.append(p)
 
         args += hadoop_options_to_args(self.hadoop_options)
 
