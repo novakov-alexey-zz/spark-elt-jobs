@@ -16,8 +16,8 @@ object FileToFile extends App {
     hadoopCopy(params)
 
   def hadoopCopy(cfg: FileCopyCfg) = {
-    val conf = HadoopCfg.get(cfg.hadoopConfig)
-    val srcFiles = cfg.entityPatterns.foldLeft(Array.empty[URI]) { (acc, p) =>
+    lazy val conf = HadoopCfg.get(cfg.hadoopConfig)
+    val srcFiles = cfg.entityPatterns.foldLeft(List.empty[URI]) { (acc, p) =>
       acc ++ listFiles(conf, p.globPattern, cfg.inputPath)
     }
     val foundFiles =
