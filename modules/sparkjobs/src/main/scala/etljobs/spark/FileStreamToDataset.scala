@@ -44,7 +44,7 @@ object FileStreamToDataset extends App {
           .load(input.toString())
           .withColumn(
             "date",
-            dateLit(cfg.fileCopy.executionDate)
+            dateLit(cfg.fileCopy.ctx.executionDate)
           )
 
         val outputPath = new URI(s"$output/${entity.name}")

@@ -81,10 +81,10 @@ object common {
   def getInOutPaths(fileCopy: FileCopyCfg): (URI, URI) = {
     val context =
       JobContext(
-        fileCopy.dagId,
-        fileCopy.executionDate
+        fileCopy.ctx.dagId,
+        fileCopy.ctx.executionDate
       )
-    val output = new URI(s"${fileCopy.outputPath}/${fileCopy.dagId}")
+    val output = new URI(s"${fileCopy.outputPath}/${fileCopy.ctx.dagId}")
     val input = contextDir(fileCopy.inputPath, context)
     (input, output)
   }

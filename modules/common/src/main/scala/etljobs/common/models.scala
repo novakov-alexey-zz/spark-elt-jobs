@@ -39,6 +39,22 @@ object SparkOption {
       )
 }
 
+@main
+case class ContextCfg(
+    @arg(
+      name = "execution-date",
+      doc =
+        "job execution date to choose file name with. Format YYYY-MM-DD, example 2000-01-01"
+    )
+    executionDate: LocalDate,
+    @arg(short = 'd', doc = "DAG id to create sub-folder inside the outputPath")
+    dagId: String
+)
+
+object ContextCfg {
+  implicit def contextCfgParser = ParserForClass[ContextCfg]
+}
+
 object FileCopyCfg {
   implicit object EntityPatternRead
       extends TokensReader[EntityPattern](
@@ -76,14 +92,6 @@ case class FileCopyCfg(
     @arg(short = 'o', doc = "Output directory")
     outputPath: URI,
     @arg(
-      name = "execution-date",
-      doc =
-        "job execution date to choose file name with. Format YYYY-MM-DD, example 2000-01-01"
-    )
-    executionDate: LocalDate,
-    @arg(short = 'd', doc = "DAG id to create sub-folder inside the outputPath")
-    dagId: String,
-    @arg(
       name = "entity-pattern",
       short = 'p',
       doc =
@@ -104,5 +112,6 @@ case class FileCopyCfg(
       doc =
         "<name>:<value> list of options to be passed to hadoop configuration"
     )
-    hadoopConfig: List[SparkOption]
+    hadoopConfig: List[SparkOption],
+    ctx: ContextCfg
 )

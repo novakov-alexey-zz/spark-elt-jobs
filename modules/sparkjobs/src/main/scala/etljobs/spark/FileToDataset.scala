@@ -67,7 +67,7 @@ object FileToDataset extends App {
 
     val inputDF = inputDataWithOptions
       .load(input.toString())
-      .withColumn("date", dateLit(cfg.fileCopy.executionDate))
+      .withColumn("date", dateLit(cfg.fileCopy.ctx.executionDate))
 
     lazy val inputDFToWrite =
       inputDF.write.partitionBy(cfg.partitionBy).mode(saveMode)

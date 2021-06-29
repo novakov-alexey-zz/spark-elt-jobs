@@ -4,22 +4,15 @@ import mainargs.{main, ParserForMethods, ParserForClass, arg}
 import etljobs.common.MainArgsUtil._
 import etljobs.common.FsUtil.JobContext
 import etljobs.common.{FsUtil, SparkOption, HadoopCfg}
+import etljobs.common.ContextCfg
 
-import java.time.LocalDate
 import java.net.URI
 import java.nio.file.Path
 
 case class CheckCfg(
     @arg(short = 'i', doc = "Path to input directory")
     inputPath: URI,
-    @arg(
-      name = "execution-date",
-      doc =
-        "job execution date to choose file name with. Format YYYY-MM-DD, example 2000-01-01"
-    )
-    executionDate: LocalDate,
-    @arg(short = 'd', doc = "DAG id to create sub-folder inside the outputPath")
-    dagId: String,
+    ctx: ContextCfg,
     @arg(
       name = "glob-pattern",
       doc = "Filter inputPath based on glob pattern"
@@ -51,17 +44,17 @@ object CheckFileExists extends App {
   def run(cfg: CheckCfg) = {
     val targetPath = FsUtil.contextDir(
       cfg.inputPath,
-      JobContext(cfg.dagId, cfg.executionDate)
+      JobContext(cfg.ctx.dagId, cfg.ctx.executionDate)
     )
     val conf = HadoopCfg.get(cfg.hadoopConfig)
     val inputFiles = FsUtil.listFiles(conf, cfg.globPattern, targetPath)
-    println(s"input files: ${inputFiles.mkString(",")}")
+    println(s"input files: ${inputFiles.mkString("\n")}")
     val inputNames =
       inputFiles.map(uri => Path.of(uri.toString()).getFileName().toString())
     val filesExist = cfg.filePrefixes.nonEmpty &&
       cfg.filePrefixes.forall(p => inputNames.exists(_.startsWith(p)))
     println(s"all file exist: $filesExist")
-    
+
     val ec = if (filesExist) FilesExistCode else FilesAbsentCode
     System.exit(ec)
   }

@@ -27,7 +27,7 @@ object FileToFile extends App {
 
     val output = contextDir(
       cfg.outputPath,
-      JobContext(cfg.dagId, cfg.executionDate)
+      JobContext(cfg.ctx.dagId, cfg.ctx.executionDate)
     )
 
     lazy val destFs = FileSystem.get(output, conf)
