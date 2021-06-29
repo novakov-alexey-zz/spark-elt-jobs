@@ -55,12 +55,13 @@ object CheckFileExists extends App {
     )
     val conf = HadoopCfg.get(cfg.hadoopConfig)
     val inputFiles = FsUtil.listFiles(conf, cfg.globPattern, targetPath)
-    println(s"input files:\n${inputFiles.mkString("\n")}")
+    println(s"input files: ${inputFiles.mkString(",")}")
     val inputNames =
       inputFiles.map(uri => Path.of(uri.toString()).getFileName().toString())
-    val filesExist =
+    val filesExist = cfg.filePrefixes.nonEmpty &&
       cfg.filePrefixes.forall(p => inputNames.exists(_.startsWith(p)))
     println(s"all file exist: $filesExist")
+    
     val ec = if (filesExist) FilesExistCode else FilesAbsentCode
     System.exit(ec)
   }
