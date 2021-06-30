@@ -17,7 +17,6 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 
 object common {
-
   val SparkOptions = Map(
     "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension",
     "spark.sql.catalog.spark_catalog" -> "org.apache.spark.sql.delta.catalog.DeltaCatalog",
@@ -62,7 +61,7 @@ object common {
     }
   }
 
-  def getSchema(
+  def readSchema(
       conf: Configuration,
       schemaPath: URI,
       entityName: String

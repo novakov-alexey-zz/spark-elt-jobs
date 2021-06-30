@@ -12,6 +12,7 @@ class CheckDataCfg(ArgList):
     input_path: str
     hadoop_options: List[Tuple[str, str]]
     entities: List[str]
+    input_format: str
     execution_date: str = "{{ds}}"
     dag_id: str = "{{dag.dag_id}}"
     date_column: str = "date"
@@ -25,7 +26,9 @@ class CheckDataCfg(ArgList):
                 "-d",
                 self.dag_id,
                 "--date-column",
-                self.date_column
+                self.date_column,
+                "--input-format",
+                self.input_format
                 ]
 
         args += hadoop_options_to_args(
@@ -69,7 +72,8 @@ extract_file_task = spark_stream_job(
 check_data_task = spark_job('check-data', CheckDataCfg(
     input_path=LOCAL_DATAWAREHOUSE,
     hadoop_options=hadoop_options(),
-    entities=[e.name for e in entity_patterns]
+    entities=[e.name for e in entity_patterns],
+    input_format="delta"
 ), 'etljobs.spark.CheckDataRecieved', dag)
 
 extract_file_task >> check_data_task

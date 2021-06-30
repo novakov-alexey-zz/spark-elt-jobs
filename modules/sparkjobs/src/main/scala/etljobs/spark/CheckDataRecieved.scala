@@ -6,6 +6,7 @@ import etljobs.common.MainArgsUtil._
 
 import org.apache.spark.sql.functions.{lit, col}
 import mainargs.{main, arg, ParserForMethods, ParserForClass}
+import DataFormat._
 
 import java.net.URI
 
@@ -25,7 +26,12 @@ case class CheckDataCfg(
     @arg(short = 'i', doc = "Path to input directory")
     inputPath: URI,
     @arg(name = "date-column", doc = "Date column name")
-    dateColumn: String
+    dateColumn: String,
+    @arg(
+      name = "input-format",
+      doc = "Data input format to be used by Spark Datasource API on read"
+    )
+    inputFormat: DataFormat
 )
 
 object CheckDataCfg {
@@ -44,9 +50,11 @@ object CheckDataRecieved extends App {
       import spark.implicits._
 
       val chunks = cfg.entities.map { entity =>
+        val tablePath = s"${cfg.inputPath}/${cfg.ctx.dagId}/$entity"
+        println(s"table path: $tablePath")
         spark.read
-          .format("delta")
-          .load(s"${cfg.inputPath}/${cfg.ctx.dagId}/$entity")
+          .format(cfg.inputFormat.toSparkFormat)
+          .load(tablePath)
           .select(col(cfg.dateColumn))
           .filter(col(cfg.dateColumn) === lit(cfg.ctx.executionDate))
           .withColumn(EntityColumn, lit(entity))
@@ -60,8 +68,7 @@ object CheckDataRecieved extends App {
       stats
         .map(r => r.getAs[String](EntityColumn) -> r.getAs[Long]("count"))
         .toMap
-    val recieved =
-      counts.nonEmpty && cfg.entities.forall(e => counts.getOrElse(e, 0L) > 0)
+    val recieved = cfg.entities.forall(e => counts.getOrElse(e, 0L) > 0)
     println(
       s"All data recieved: $recieved, current counts: ${if (counts.isEmpty) "none"
       else counts}"

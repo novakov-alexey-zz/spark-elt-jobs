@@ -80,7 +80,7 @@ object FileToDataset extends App {
         tablePath: String =>
           lazy val schema =
             cfg.schemaPath.map(path =>
-              getSchema(
+              readSchema(
                 spark.sparkContext.hadoopConfiguration,
                 path,
                 entity.name

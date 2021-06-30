@@ -14,6 +14,19 @@ sealed trait DataFormat {
 }
 
 object DataFormat {
+  implicit object DataFormatRead
+      extends TokensReader[DataFormat](
+        "input file or output file/table format",
+        strs =>
+          strs.head match {
+            case "csv"     => Right(CSV)
+            case "json"    => Right(JSON)
+            case "parquet" => Right(Parquet)
+            case "delta"   => Right(Delta)
+            case _         => Left("Unknown file format")
+          }
+      )
+
   case object CSV extends DataFormat
   case object JSON extends DataFormat
   case object Parquet extends DataFormat
@@ -58,18 +71,5 @@ case class SparkCopyCfg(
 )
 
 object SparkCopyCfg {
-  implicit object DataFormatRead
-      extends TokensReader[DataFormat](
-        "input file or output file/table format",
-        strs =>
-          strs.head match {
-            case "csv"     => Right(CSV)
-            case "json"    => Right(JSON)
-            case "parquet" => Right(Parquet)
-            case "delta"   => Right(Delta)
-            case _         => Left("Unknown file format")
-          }
-      )
-
   implicit def copyParamsParser = ParserForClass[SparkCopyCfg]
 }

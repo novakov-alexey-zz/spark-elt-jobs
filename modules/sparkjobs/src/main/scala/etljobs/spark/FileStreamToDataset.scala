@@ -23,7 +23,7 @@ object FileStreamToDataset extends App {
 
     useResource(sparkSession) { spark =>
       val queries = cfg.fileCopy.entityPatterns.map { entity =>
-        val schema = getSchema(
+        val schema = readSchema(
           conf,
           cfg.schemaPath.getOrElse(
             sys.error(
