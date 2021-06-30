@@ -32,8 +32,6 @@ object CheckDataCfg {
   implicit def checkDataCfgParser = ParserForClass[CheckDataCfg]
 }
 
-case class EntityCount(entity: String, count: Long)
-
 object CheckDataRecieved extends App {
   val DataRecivedCode = 0
   val DataAbsentCode = 99
@@ -59,11 +57,15 @@ object CheckDataRecieved extends App {
       union.groupBy(EntityColumn).count().collect()
     }
     val counts =
-      stats.map(r =>
-        EntityCount(r.getAs[String](EntityColumn), r.getAs[Long]("count"))
-      )
-    println(s"current counts: ${counts.mkString(", ")}")
-    val recieved = counts.forall(_.count > 0)
+      stats
+        .map(r => r.getAs[String](EntityColumn) -> r.getAs[Long]("count"))
+        .toMap
+    val recieved =
+      counts.nonEmpty && cfg.entities.forall(e => counts.getOrElse(e, 0L) > 0)
+    println(
+      s"All data recieved: $recieved, current counts: ${if (counts.isEmpty) "none"
+      else counts}"
+    )
 
     val ec = if (recieved) DataRecivedCode else DataAbsentCode
     System.exit(ec)

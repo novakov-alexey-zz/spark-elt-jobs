@@ -15,7 +15,7 @@ object FsUtil {
       inputPath: URI
   ): Array[URI] = {
     val fs = FileSystem.get(inputPath, conf)
-    val path = new HPath(s"$inputPath/$globPattern")    
+    val path = new HPath(s"$inputPath/$globPattern")
     val statuses = fs.globStatus(path)
     statuses.map(_.getPath().toUri())
   }

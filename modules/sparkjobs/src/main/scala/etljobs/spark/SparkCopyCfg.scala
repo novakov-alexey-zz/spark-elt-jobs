@@ -53,7 +53,7 @@ case class SparkCopyCfg(
       name = "partition-by",
       doc = "Table column to parition by"
     )
-    partitionBy: String,    
+    partitionBy: String,
     fileCopy: FileCopyCfg
 )
 
