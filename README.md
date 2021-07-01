@@ -9,10 +9,10 @@ There are different generic jobs based on Spark and Hadoop Common libraries to p
 -   [FileStreamToDataset.scala](modules/sparkjobs/src/main/scala/etljobs/spark/FileStreamToDataset.scala) is the same as previos job, but using Spark Streaming API.
 -   [CheckDataRecieved.scala](modules/sparkjobs/src/main/scala/etljobs/spark/CheckDataRecieved.scala) checks that all required data exist at specific locations.
 
-See exection example in Airflow DAGs:
+See execution examples in Airflow DAGs folder:
 
--   [src/dags/spark_example.py](src/dags/spark_example.py)
--   [src/dags/spark_full_delta.py](src/dags/spark_full_delta.py)
+-   [airflow-dir/src/dags/spark_example.py](airflow-dir/src/dags/spark_example.py)
+-   [airflow-dir/src/dags/spark_full_delta.py](airflow-dir/src/dags/spark_full_delta.py)
 
 Supported input/output formats:
 
