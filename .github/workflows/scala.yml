@@ -1,0 +1,30 @@
+name: Scala CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        java-version: '11'
+        distribution: 'adopt'
+    - name: Run tests
+      run: sbt test
+    - name: Install Dependencies
+      run: python3 -m pip install -r requirements.txt
+    - name: Mypy Check
+      # You may pin to the exact commit or the version.
+      # uses: jpetrucciani/mypy-check@52335dab5432fe3b57c5d7527fd39db94c736e92
+      uses: jpetrucciani/mypy-check@0.761
+      with:        
+        path: airflow-dir/src
