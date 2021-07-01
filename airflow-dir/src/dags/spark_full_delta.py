@@ -61,7 +61,9 @@ spark_streaming_job_cfg = SparkJobCfg(
     input_path=LOCAL_INPUT,
     output_path=LOCAL_DATAWAREHOUSE,
     entity_patterns=entity_patterns,
-    reader_options=["header:true"],
+    reader_options=[
+        "header:true",  # CSV source to skip header
+    ],
     hadoop_options=hadoop_options(),
     partition_by="date",
     input_schema_path=dag_schema_path

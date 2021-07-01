@@ -37,7 +37,7 @@ object FileStreamToDataset extends App {
           .format(cfg.inputFormat.toSparkFormat)
           .schema(schema)
         val streamWithOptions =
-          cfg.readerOptions.getOrElse(List.empty).foldLeft(stream) {
+          cfg.readerOptions.foldLeft(stream) {
             case (acc, opt) => acc.option(opt.name, opt.value)
           }
         val df = streamWithOptions

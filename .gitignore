@@ -15,3 +15,4 @@ github
 airflow-dir/logs
 metastore_db
 derby.log
+execution-date.txt

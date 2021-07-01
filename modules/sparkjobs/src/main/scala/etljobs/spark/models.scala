@@ -55,7 +55,7 @@ case class SparkCopyCfg(
       name = "reader-options",
       doc = "<name>:<value> list of options to be passed to Spark reader"
     )
-    readerOptions: Option[List[SparkOption]],
+    readerOptions: List[SparkOption],
     @arg(
       short = 's',
       name = "schema-path",

@@ -60,7 +60,7 @@ object FileToDataset extends App {
       SparkOption("inferSchema", "true")
     )
     val inputDataWithOptions =
-      (cfg.readerOptions.getOrElse(Nil) ++ options)
+      (cfg.readerOptions ++ options)
         .foldLeft(inputData) { case (acc, opt) =>
           acc.option(opt.name, opt.value)
         }
