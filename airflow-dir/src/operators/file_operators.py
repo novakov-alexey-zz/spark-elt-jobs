@@ -19,7 +19,7 @@ import itertools
 
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from typing import List, AnyStr, Set
+from typing import List, Set
 from shutil import copyfile, move
 from airflow.contrib.hooks.fs_hook import FSHook
 from airflow.models import BaseOperator
@@ -34,7 +34,7 @@ DATE_FORMAT = '%Y%m%d'
 @dataclass_json
 @dataclass
 class FileTransfer:
-    source_filenames: List[AnyStr]
+    source_filenames: List[str]
 
 
 class FileToPredictableLocationOperator(BaseOperator):
@@ -99,7 +99,9 @@ class FileToPredictableLocationOperator(BaseOperator):
             logging.info(f"Pushing file names {source_names}")
             task_instance = context['task_instance']
             task_instance.xcom_push(
-                'file_transfer', FileTransfer(source_names).to_dict())
+                'file_transfer',
+                FileTransfer(source_names).to_dict()
+            )
 
 
 class PredictableLocationToFinalLocationOperator(BaseOperator):
@@ -174,7 +176,9 @@ class CheckReceivedFileOperator(BaseOperator):
         for id in self.upstream_task_ids:
             ft = task.xcom_pull(id, key='file_transfer')
             if ft:
-                file_transfers.append(FileTransfer.from_dict(ft))
+                file_transfers.append(
+                    FileTransfer.from_dict(ft)  # type: ignore
+                )
         return file_transfers
 
     def destination_file_names(self, context) -> List[str]:

@@ -3,3 +3,4 @@ apache-airflow-providers-http==1.1.1
 requests==2.25.1
 dataclasses-json==0.5.4
 apache-airflow-providers-apache-spark
+mypy

@@ -88,7 +88,6 @@ def hadoop_copy(task_id: str, cfg: HadoopJobCfg, dag: DAG) -> BaseOperator:
         task_id=task_id,
         bash_command="java -cp " + HADOOP_JOBS_JAR +
         " etljobs.hadoop.FileToFile " + mkString(cfg.to_arg_list()),
-        skip_exit_code=None,
         dag=dag
     )
 
