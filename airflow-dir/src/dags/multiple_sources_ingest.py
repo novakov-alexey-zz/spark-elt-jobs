@@ -47,7 +47,7 @@ check_file = CheckReceivedFileOperator(
     dst_conn_id='fs_local_raw_data',
     dag=dag)
 
-[ingest_items, ingest_orders, ingest_customers] >> check_file
+[ingest_items, ingest_orders, ingest_customers] >> check_file  # type: ignore
 
 if __name__ == "__main__":
     dag.cli()

@@ -18,6 +18,7 @@ class ArgList:
     def to_arg_list(self) -> List[str]:
         pass
 
+
 @dataclass
 class SparkJobCfg(ArgList):
     input_path: str
@@ -72,7 +73,7 @@ class SparkJobCfg(ArgList):
 
 
 def entity_patterns_to_args(entity_patterns: List[EntityPattern]) -> List[str]:
-    args = []
+    args: List[str] = []
     for e in entity_patterns:
         dedupKey = ("" if e.dedupKey is None else ":" + e.dedupKey)
         pattern = e.name + ":" + e.pattern + "_*{{ ds }}.csv"
@@ -109,7 +110,7 @@ def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG) -> BaseOper
         num_executors='1',
         name=task_id,
         verbose=False,
-        driver_memory='1g',        
+        driver_memory='1g',
         dag=dag
     )
 
