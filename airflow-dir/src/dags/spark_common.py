@@ -28,6 +28,7 @@ class SparkJobCfg(ArgList):
     partition_by: str
     entity_patterns: List[EntityPattern]
     input_schema_path: str
+    trigger_interval: int = -1
     input_format: str = "csv"
     output_format: str = "delta"
     execution_date: str = "{{ds}}"
@@ -58,6 +59,7 @@ class SparkJobCfg(ArgList):
             args.append("--archive-source")
 
         args += ["-s", self.input_schema_path]
+        args += ["--trigger-interval", str(self.trigger_interval)]
 
         formats = ["--input-format", self.input_format,
                    "--output-format", self.output_format]
@@ -115,11 +117,6 @@ def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG) -> BaseOper
         name=task_id,
         verbose=False,
         driver_memory='1g',
-        files='/Users/Alexey_Novakov/dev/git/airflow-poc/modules/sparkjobs/src/main/resources/log4j.properties',
-        conf={
-            "spark.driver.extraJavaOptions": "-Dlog4j.configuration=/Users/Alexey_Novakov/dev/git/airflow-poc/modules/sparkjobs/src/main/resources/log4j.properties",
-            "spark.executor.extraJavaOptions": "-Dlog4j.configuration=/Users/Alexey_Novakov/dev/git/airflow-poc/modules/sparkjobs/src/main/resources/log4j.properties",
-        },
         dag=dag
     )
 
@@ -138,8 +135,8 @@ def hadoop_options() -> List[Tuple[str, str]]:
     ]
 
 
-LOCAL_INPUT = "{{fromjson(connection.fs_local.extra)['inputPath']}}"
-LOCAL_DATAWAREHOUSE = "{{fromjson(connection.fs_local.extra)['dwPath']}}"
+LOCAL_INPUT = "{{fromjson(connection.s3_local.extra)['inputPath']}}"
+LOCAL_DATAWAREHOUSE = "{{fromjson(connection.s3_local.extra)['dwPath']}}"
 
 SPARK_JOBS_JAR = "{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}"
 INPUT_SCHEMA = "{{fromjson(connection.input_schemas.extra)['path']}}"

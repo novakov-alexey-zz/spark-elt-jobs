@@ -18,12 +18,8 @@ object FileStreamToDataset extends App {
     println(s"all ${queries.length} streaming queries are terminated")
   }
 
-  private def addOptions(
-      stream: DataStreamReader,
-      cfg: SparkCopyCfg,
-      globPattern: String
-  ) = {
-    val archivingOptions = if (cfg.archiveSource.value) {
+  private def archiveSourceOptions(cfg: SparkCopyCfg) =
+    if (cfg.archiveSource.value) {
       val archiveDir = getInPath(
         cfg.fileCopy.copy(inputPath =
           new URI(s"${cfg.fileCopy.inputPath}/archive")
@@ -35,9 +31,19 @@ object FileStreamToDataset extends App {
           "sourceArchiveDir",
           archiveDir
         )
+        // For DEBUG: below are two Spark INTERNAL options to speed up the source archiving process
+        ,
+        SparkOption("spark.sql.streaming.fileSource.log.compactInterval", "0"),
+        SparkOption("spark.sql.streaming.fileSource.log.cleanupDelay", "1")
       )
     } else Nil
 
+  private def addOptions(
+      stream: DataStreamReader,
+      cfg: SparkCopyCfg,
+      globPattern: String
+  ) = {
+    val archivingOptions = archiveSourceOptions(cfg)
     val autoOptions =
       List(SparkOption("pathGlobFilter", globPattern)) ++ archivingOptions
 
@@ -47,16 +53,18 @@ object FileStreamToDataset extends App {
   }
 
   @main
-  def run(cfg: SparkCopyCfg) = {
-    val (input, output) = getInOutPaths(cfg.fileCopy)
-    val sparkSession = sparkWithConfig(cfg.fileCopy.hadoopConfig).getOrCreate()
-    lazy val conf = HadoopCfg.get(cfg.fileCopy.hadoopConfig)
+  def run(cfg: SparkStreamingCopyCfg) = {
+    val sparkCopy = cfg.sparkCopy
+    val (input, output) = getInOutPaths(sparkCopy.fileCopy)
+    val sparkSession =
+      sparkWithConfig(sparkCopy.fileCopy.hadoopConfig).getOrCreate()
+    lazy val conf = HadoopCfg.get(cfg.sparkCopy.fileCopy.hadoopConfig)
 
     useResource(sparkSession) { spark =>
-      val queries = cfg.fileCopy.entityPatterns.map { entity =>
-        val schemaPath = cfg.schemaPath.getOrElse(
+      val queries = sparkCopy.fileCopy.entityPatterns.map { entity =>
+        val schemaPath = sparkCopy.schemaPath.getOrElse(
           sys.error(
-            s"struct schema is required for streaming query to load '${entity.name}'' entity"
+            s"struct schema is required for streaming query to load '${entity.name}' entity"
           )
         )
         val schema = readSchema(
@@ -66,28 +74,32 @@ object FileStreamToDataset extends App {
         )
         val stream = addOptions(
           spark.readStream,
-          cfg,
+          sparkCopy,
           entity.globPattern
-        ).format(cfg.inputFormat.toSparkFormat)
+        ).format(sparkCopy.inputFormat.toSparkFormat)
           .schema(schema)
         val df = stream
           .load(input.toString())
           .withColumn(
             "date",
-            dateLit(cfg.fileCopy.ctx.executionDate)
+            dateLit(sparkCopy.fileCopy.ctx.executionDate)
           )
 
         val outputPath = new URI(s"$output/${entity.name}")
         val checkpointPath = new URI(s"$outputPath/_checkpoints")
+        val trigger =
+          if (cfg.triggerInterval < 0) Trigger.Once
+          else
+            Trigger.ProcessingTime(cfg.triggerInterval)
         println(
-          s"starting stream for input '${input}' to output '${outputPath}'"
+          s"starting stream for input '${input}' to output '${outputPath}' with trigger $trigger"
         )
         df.writeStream
           .outputMode(OutputMode.Append)
           .option("checkpointLocation", checkpointPath.toString())
-          .partitionBy(cfg.partitionBy)
-          .trigger(Trigger.Once)
-          .format(cfg.saveFormat.toSparkFormat)
+          .partitionBy(sparkCopy.partitionBy)
+          .trigger(trigger)
+          .format(sparkCopy.saveFormat.toSparkFormat)
           .start(outputPath.toString())
       }
 
@@ -95,11 +107,11 @@ object FileStreamToDataset extends App {
         waitForTermination(queries)
     }
 
-    if (requireMove(cfg) && !cfg.archiveSource.value) {
+    if (requireMove(sparkCopy) && !sparkCopy.archiveSource.value) {
       moveFiles(
         conf,
-        cfg.fileCopy.entityPatterns,
-        cfg.fileCopy.processedDir,
+        sparkCopy.fileCopy.entityPatterns,
+        sparkCopy.fileCopy.processedDir,
         input
       )
     }

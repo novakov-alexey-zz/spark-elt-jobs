@@ -78,3 +78,18 @@ case class SparkCopyCfg(
 object SparkCopyCfg {
   implicit def copyParamsParser = ParserForClass[SparkCopyCfg]
 }
+
+@main
+case class SparkStreamingCopyCfg(
+    sparkCopy: SparkCopyCfg,
+    @arg(
+      name = "trigger-interval",
+      doc =
+        "Number of milliseconds for Spark streaming ProcessingTime trigger. Negative value sets Trigger.Once"
+    )
+    triggerInterval: Long
+)
+
+object SparkStreamingCopyCfg {
+  implicit def copyParamsParser = ParserForClass[SparkStreamingCopyCfg]
+}

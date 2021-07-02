@@ -67,7 +67,8 @@ spark_streaming_job_cfg = SparkJobCfg(
     hadoop_options=hadoop_options(),
     partition_by="date",
     input_schema_path=dag_schema_path,
-    archive_source=True
+    archive_source=True,
+    trigger_interval=-1
 )
 extract_file_task = spark_stream_job(
     'file-2-location', spark_streaming_job_cfg, dag)
