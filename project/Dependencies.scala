@@ -16,5 +16,5 @@ object Dependencies {
     .exclude("com.amazonaws", "aws-java-sdk-bundle")
   lazy val awsS3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % AwsSdkVer
   lazy val awsDynmodbSdk =
-    "com.amazonaws" % "aws-java-sdk-dynamodb" % AwsSdkVer    
+    "com.amazonaws" % "aws-java-sdk-dynamodb" % AwsSdkVer
 }

@@ -67,7 +67,12 @@ case class SparkCopyCfg(
       doc = "Table column to parition by"
     )
     partitionBy: String,
-    fileCopy: FileCopyCfg
+    fileCopy: FileCopyCfg,
+    @arg(
+      name = "archive-source",
+      doc = "Whether to archieve processed source files"
+    )
+    archiveSource: Flag
 )
 
 object SparkCopyCfg {

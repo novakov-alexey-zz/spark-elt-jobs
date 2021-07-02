@@ -2,9 +2,12 @@ package etljobs.spark
 
 import common._
 import etljobs.common.HadoopCfg
+import etljobs.common.SparkOption
 
 import org.apache.spark.sql.streaming.{OutputMode, Trigger, StreamingQuery}
+import org.apache.spark.sql.streaming.DataStreamReader
 import mainargs.{ParserForMethods, main}
+
 import java.net.URI
 
 object FileStreamToDataset extends App {
@@ -15,6 +18,34 @@ object FileStreamToDataset extends App {
     println(s"all ${queries.length} streaming queries are terminated")
   }
 
+  private def addOptions(
+      stream: DataStreamReader,
+      cfg: SparkCopyCfg,
+      globPattern: String
+  ) = {
+    val archivingOptions = if (cfg.archiveSource.value) {
+      val archiveDir = getInPath(
+        cfg.fileCopy.copy(inputPath =
+          new URI(s"${cfg.fileCopy.inputPath}/archive")
+        )
+      ).toString()
+      List(
+        SparkOption("cleanSource", "archive"),
+        SparkOption(
+          "sourceArchiveDir",
+          archiveDir
+        )
+      )
+    } else Nil
+
+    val autoOptions =
+      List(SparkOption("pathGlobFilter", globPattern)) ++ archivingOptions
+
+    (cfg.readerOptions ++ autoOptions).foldLeft(stream) { case (acc, opt) =>
+      acc.option(opt.name, opt.value)
+    }
+  }
+
   @main
   def run(cfg: SparkCopyCfg) = {
     val (input, output) = getInOutPaths(cfg.fileCopy)
@@ -23,24 +54,23 @@ object FileStreamToDataset extends App {
 
     useResource(sparkSession) { spark =>
       val queries = cfg.fileCopy.entityPatterns.map { entity =>
+        val schemaPath = cfg.schemaPath.getOrElse(
+          sys.error(
+            s"struct schema is required for streaming query to load '${entity.name}'' entity"
+          )
+        )
         val schema = readSchema(
           conf,
-          cfg.schemaPath.getOrElse(
-            sys.error(
-              s"struct schema is required for streaming query to load '${entity.name}'' entity"
-            )
-          ),
+          schemaPath,
           entity.name
         )
-        val stream = spark.readStream
-          .option("pathGlobFilter", entity.globPattern)
-          .format(cfg.inputFormat.toSparkFormat)
+        val stream = addOptions(
+          spark.readStream,
+          cfg,
+          entity.globPattern
+        ).format(cfg.inputFormat.toSparkFormat)
           .schema(schema)
-        val streamWithOptions =
-          cfg.readerOptions.foldLeft(stream) {
-            case (acc, opt) => acc.option(opt.name, opt.value)
-          }
-        val df = streamWithOptions
+        val df = stream
           .load(input.toString())
           .withColumn(
             "date",
@@ -65,7 +95,7 @@ object FileStreamToDataset extends App {
         waitForTermination(queries)
     }
 
-    if (requireMove(cfg)) {
+    if (requireMove(cfg) && !cfg.archiveSource.value) {
       moveFiles(
         conf,
         cfg.fileCopy.entityPatterns,

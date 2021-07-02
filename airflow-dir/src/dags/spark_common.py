@@ -34,6 +34,7 @@ class SparkJobCfg(ArgList):
     dag_id: str = "{{dag.dag_id}}"
     overwrite: bool = True
     move_files: bool = True
+    archive_source: bool = False
     hadoop_options_prefix: Optional[str] = "spark.hadoop."
 
     def to_arg_list(self) -> List[str]:
@@ -52,6 +53,9 @@ class SparkJobCfg(ArgList):
 
         if self.move_files:
             args.append("--move-files")
+
+        if self.archive_source:
+            args.append("--archive-source")
 
         args += ["-s", self.input_schema_path]
 
@@ -111,6 +115,11 @@ def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG) -> BaseOper
         name=task_id,
         verbose=False,
         driver_memory='1g',
+        files='/Users/Alexey_Novakov/dev/git/airflow-poc/modules/sparkjobs/src/main/resources/log4j.properties',
+        conf={
+            "spark.driver.extraJavaOptions": "-Dlog4j.configuration=/Users/Alexey_Novakov/dev/git/airflow-poc/modules/sparkjobs/src/main/resources/log4j.properties",
+            "spark.executor.extraJavaOptions": "-Dlog4j.configuration=/Users/Alexey_Novakov/dev/git/airflow-poc/modules/sparkjobs/src/main/resources/log4j.properties",
+        },
         dag=dag
     )
 
@@ -129,8 +138,8 @@ def hadoop_options() -> List[Tuple[str, str]]:
     ]
 
 
-LOCAL_INPUT = "{{fromjson(connection.s3_local.extra)['inputPath']}}"
-LOCAL_DATAWAREHOUSE = "{{fromjson(connection.s3_local.extra)['dwPath']}}"
+LOCAL_INPUT = "{{fromjson(connection.fs_local.extra)['inputPath']}}"
+LOCAL_DATAWAREHOUSE = "{{fromjson(connection.fs_local.extra)['dwPath']}}"
 
 SPARK_JOBS_JAR = "{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}"
 INPUT_SCHEMA = "{{fromjson(connection.input_schemas.extra)['path']}}"
