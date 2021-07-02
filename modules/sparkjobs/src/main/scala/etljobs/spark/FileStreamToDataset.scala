@@ -32,9 +32,9 @@ object FileStreamToDataset extends App {
           archiveDir
         )
         // For DEBUG: below are two Spark INTERNAL options to speed up the source archiving process
-        ,
-        SparkOption("spark.sql.streaming.fileSource.log.compactInterval", "0"),
-        SparkOption("spark.sql.streaming.fileSource.log.cleanupDelay", "1")
+        // ,
+        // SparkOption("spark.sql.streaming.fileSource.log.compactInterval", "0"),
+        // SparkOption("spark.sql.streaming.fileSource.log.cleanupDelay", "1")
       )
     } else Nil
 
