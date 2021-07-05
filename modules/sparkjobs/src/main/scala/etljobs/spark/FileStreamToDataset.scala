@@ -19,7 +19,7 @@ object FileStreamToDataset extends App {
   }
 
   private def archiveSourceOptions(cfg: SparkCopyCfg) =
-    if (cfg.archiveSource.value) {
+    if (cfg.streamMoveFiles.value) {
       val archiveDir = getInPath(
         cfg.fileCopy.copy(inputPath =
           new URI(s"${cfg.fileCopy.inputPath}/archive")
@@ -107,7 +107,7 @@ object FileStreamToDataset extends App {
         waitForTermination(queries)
     }
 
-    if (requireMove(sparkCopy) && !sparkCopy.archiveSource.value) {
+    if (requireMove(sparkCopy) && !sparkCopy.streamMoveFiles.value) {
       moveFiles(
         conf,
         sparkCopy.fileCopy.entityPatterns,

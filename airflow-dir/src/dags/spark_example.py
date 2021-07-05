@@ -1,14 +1,14 @@
 from dataclasses import dataclass
+from datetime import timedelta
+from functools import reduce
+from typing import List, Tuple
+
 from airflow import DAG
 from airflow.models import BaseOperator
-from airflow.contrib.operators.spark_submit_operator import SparkSubmitOperator
 from airflow.operators.bash import BashOperator
-from airflow.hooks.base_hook import BaseHook
-from datetime import timedelta
-from typing import List, Tuple, Optional
-from functools import reduce
 from dags.spark_common import EntityPattern, SparkJobCfg, entity_patterns_to_args, dag_schema_path, spark_job
-from dags.spark_common import hadoop_options_to_args, spark_stream_job, entity_patterns, hadoop_options, user_defined_macros, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
+from dags.spark_common import hadoop_options_to_args, spark_stream_job, entity_patterns, hadoop_options, \
+    user_defined_macros, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
 
 
 @dataclass
@@ -87,7 +87,7 @@ def hadoop_copy(task_id: str, cfg: HadoopJobCfg, dag: DAG) -> BaseOperator:
     return BashOperator(
         task_id=task_id,
         bash_command="java -cp " + HADOOP_JOBS_JAR +
-        " etljobs.hadoop.FileToFile " + mkString(cfg.to_arg_list()),
+                     " etljobs.hadoop.FileToFile " + mkString(cfg.to_arg_list()),
         dag=dag
     )
 
@@ -96,10 +96,11 @@ def check_files_task(cfg: CheckFileCfg, dag: DAG) -> BaseOperator:
     return BashOperator(
         task_id='check-file',
         bash_command="java -cp " + HADOOP_JOBS_JAR +
-        " etljobs.hadoop.CheckFileExists " + mkString(cfg.to_arg_list()),
+                     " etljobs.hadoop.CheckFileExists " + mkString(cfg.to_arg_list()),
         skip_exit_code=99,
         dag=dag
     )
+
 
 ########################################
 # DAG construction site
@@ -136,7 +137,6 @@ check_file_cfg = CheckFileCfg(
     hadoop_options=hadoop_options()
 )
 check_files = check_files_task(check_file_cfg, dag)
-
 
 # files_to_dataset = spark_batch_job(
 # 'file-2-dataset', spark_job_cfg)

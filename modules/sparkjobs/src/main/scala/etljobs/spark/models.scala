@@ -69,10 +69,10 @@ case class SparkCopyCfg(
     partitionBy: String,
     fileCopy: FileCopyCfg,
     @arg(
-      name = "archive-source",
-      doc = "Whether to archieve processed source files"
+      name = "stream-move-files",
+      doc = "Whether to move source files using Spark streaming 'cleanSource' feature"
     )
-    archiveSource: Flag
+    streamMoveFiles: Flag
 )
 
 object SparkCopyCfg {

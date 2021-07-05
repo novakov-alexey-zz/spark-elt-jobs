@@ -5,6 +5,9 @@ from typing import List, Tuple, Optional
 
 from dags.spark_common import hadoop_options_to_args, dag_schema_path, spark_job, hadoop_options, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
 from dags.spark_common import SparkJobCfg, spark_stream_job, entity_patterns, user_defined_macros, ArgList
+from airflow.operators.python import BranchPythonOperator
+from airflow.operators.dummy import DummyOperator
+from airflow.operators.python_operator import ShortCircuitOperator
 
 
 @dataclass
@@ -67,20 +70,37 @@ spark_streaming_job_cfg = SparkJobCfg(
     hadoop_options=hadoop_options(),
     partition_by="date",
     input_schema_path=dag_schema_path,
-    archive_source=True,
     trigger_interval=-1
 )
 extract_file_task = spark_stream_job(
-    'file-2-location', spark_streaming_job_cfg, dag)
+    'file_2_location', spark_streaming_job_cfg, dag)
 
-check_data_task = spark_job('check-data', CheckDataCfg(
+check_cfg = CheckDataCfg(
     input_path=LOCAL_DATAWAREHOUSE,
     hadoop_options=hadoop_options(),
     entities=[e.name for e in entity_patterns],
     input_format="delta"
-), 'etljobs.spark.CheckDataRecieved', dag)
+)
+check_data_task = spark_job('check_data', check_cfg,
+                            'etljobs.spark.CheckDataRecieved', dag, 99)
 
-extract_file_task >> check_data_task
+continue_op = DummyOperator(task_id='continue_task', dag=dag)
+
+
+def shortcircuit_fn(**context):
+    exit_code = context['ti'].xcom_pull(
+        task_ids='check_data', key='returncode')
+    print(f"exit_code: {exit_code}")
+    if exit_code != 99:
+        return True
+    else:
+        return False
+
+
+short_op = ShortCircuitOperator(
+    task_id='short_circuit', python_callable=shortcircuit_fn, dag=dag)
+
+extract_file_task >> check_data_task >> short_op >> continue_op
 
 if __name__ == "__main__":
     dag.cli()

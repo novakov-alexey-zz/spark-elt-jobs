@@ -1,17 +1,18 @@
 from dataclasses import dataclass
+from typing import List, Tuple, Optional
+
 from airflow import DAG
-from airflow.models import BaseOperator
-from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
-from typing import List, Tuple, Set, Optional
-from dags.macros import ConnectionGrabber, from_json
 from airflow.hooks.base import BaseHook
+from airflow.models import BaseOperator
+from dags.macros import ConnectionGrabber, from_json
+from operators.spark import SparkSubmitReturnCode
 
 
 @dataclass
 class EntityPattern:
     name: str
     pattern: str
-    dedupKey: Optional[str] = None
+    dedup_key: Optional[str] = None
 
 
 class ArgList:
@@ -35,7 +36,7 @@ class SparkJobCfg(ArgList):
     dag_id: str = "{{dag.dag_id}}"
     overwrite: bool = True
     move_files: bool = True
-    archive_source: bool = False
+    stream_move_files: bool = False
     hadoop_options_prefix: Optional[str] = "spark.hadoop."
 
     def to_arg_list(self) -> List[str]:
@@ -55,8 +56,8 @@ class SparkJobCfg(ArgList):
         if self.move_files:
             args.append("--move-files")
 
-        if self.archive_source:
-            args.append("--archive-source")
+        if self.stream_move_files:
+            args.append("--stream-move-files")
 
         args += ["-s", self.input_schema_path]
         args += ["--trigger-interval", str(self.trigger_interval)]
@@ -78,12 +79,12 @@ class SparkJobCfg(ArgList):
         return args
 
 
-def entity_patterns_to_args(entity_patterns: List[EntityPattern]) -> List[str]:
+def entity_patterns_to_args(patterns: List[EntityPattern]) -> List[str]:
     args: List[str] = []
-    for e in entity_patterns:
-        dedupKey = ("" if e.dedupKey is None else ":" + e.dedupKey)
+    for e in patterns:
+        dedup_key = ("" if e.dedup_key is None else ":" + e.dedup_key)
         pattern = e.name + ":" + e.pattern + "_*{{ ds }}.csv"
-        args += ["--entity-pattern", pattern + dedupKey]
+        args += ["--entity-pattern", pattern + dedup_key]
 
     return args
 
@@ -97,19 +98,20 @@ def hadoop_options_to_args(options: List[Tuple[str, str]], prefix: Optional[str]
     return args
 
 
-def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG) -> BaseOperator:
-    return spark_job(task_id, cfg, 'etljobs.spark.FileStreamToDataset', dag)
+def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optional[int] = None) -> BaseOperator:
+    return spark_job(task_id, cfg, 'etljobs.spark.FileStreamToDataset', dag, skip_exit_code)
 
 
-def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG) -> BaseOperator:
-    copy_args = cfg.to_arg_list()
+def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int]) -> BaseOperator:
+    job_args = cfg.to_arg_list()
 
-    return SparkSubmitOperator(
+    return SparkSubmitReturnCode(
+        skip_exit_code=skip_exit_code,
         task_id=task_id,
         conn_id='spark_default',
         java_class=main_class,
         application=SPARK_JOBS_JAR,
-        application_args=copy_args,
+        application_args=job_args,
         total_executor_cores='2',
         executor_cores='1',
         executor_memory='1g',
@@ -117,7 +119,8 @@ def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG) -> BaseOper
         name=task_id,
         verbose=False,
         driver_memory='1g',
-        dag=dag
+        dag=dag,
+        do_xcom_push=True
     )
 
 

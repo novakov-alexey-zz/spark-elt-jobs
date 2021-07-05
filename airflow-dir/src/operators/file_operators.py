@@ -12,18 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import fnmatch
-import logging
 import itertools
-
+import logging
+import os
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
-from typing import List, Set
 from shutil import copyfile, move
+from typing import List, Set
+
 from airflow.contrib.hooks.fs_hook import FSHook
 from airflow.models import BaseOperator
-from datetime import datetime
+from dataclasses_json import dataclass_json
 
 # You can also make this format a parameter in the Operator, for example
 # if you expect that you work with different intervals than "@daily".
@@ -173,8 +172,8 @@ class CheckReceivedFileOperator(BaseOperator):
     def get_file_transfers(self, context) -> List[FileTransfer]:
         task = context['task_instance']
         file_transfers = []
-        for id in self.upstream_task_ids:
-            ft = task.xcom_pull(id, key='file_transfer')
+        for task_id in self.upstream_task_ids:
+            ft = task.xcom_pull(task_id, key='file_transfer')
             if ft:
                 file_transfers.append(
                     FileTransfer.from_dict(ft)  # type: ignore
@@ -198,7 +197,7 @@ class CheckReceivedFileOperator(BaseOperator):
         logging.info(f"file_transfers: {file_transfers}")
 
         if len(file_transfers) != 0:
-            dest_names = destination_file_names(context)
+            dest_names = self.destination_file_names(context)
             logging.info(f"Destination file names: {dest_names}")
 
             source_names = [ft.source_filenames for ft in file_transfers]
@@ -211,4 +210,4 @@ class CheckReceivedFileOperator(BaseOperator):
             found_prefixes = set(map(lambda n: n.split("_")[0], joined_names))
 
             if self.file_prefixes == found_prefixes:
-                print("All files recieved!")
+                print("All files received!")
