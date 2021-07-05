@@ -102,7 +102,7 @@ def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optio
     return spark_job(task_id, cfg, 'etljobs.spark.FileStreamToDataset', dag, skip_exit_code)
 
 
-def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int]) -> BaseOperator:
+def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int] = None) -> BaseOperator:
     job_args = cfg.to_arg_list()
 
     return SparkSubmitReturnCode(
