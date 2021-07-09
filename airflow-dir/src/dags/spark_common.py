@@ -80,22 +80,17 @@ class SparkJobCfg(ArgList):
 
 
 def entity_patterns_to_args(patterns: List[EntityPattern]) -> List[str]:
-    args: List[str] = []
     for e in patterns:
         dedup_key = ("" if e.dedup_key is None else ":" + e.dedup_key)
         pattern = e.name + ":" + e.pattern + "_*{{ ds }}.csv"
-        args += ["--entity-pattern", pattern + dedup_key]
-
-    return args
+        yield "--entity-pattern"
+        yield pattern + dedup_key
 
 
 def hadoop_options_to_args(options: List[Tuple[str, str]], prefix: Optional[str] = None) -> List[str]:
-    args = []
     for name, value in options:
-        args.append("--hadoop-config")
-        args.append((prefix if prefix is not None else "") +
-                    name + ":" + value)
-    return args
+        yield "--hadoop-config"
+        yield (prefix if prefix is not None else "" + name + ":" + value)
 
 
 def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optional[int] = None) -> BaseOperator:

@@ -5,6 +5,10 @@ object Dependencies {
   lazy val sparkSql = "org.apache.spark" %% "spark-sql" % "3.1.2"
   lazy val delta = "io.delta" %% "delta-core" % "1.0.0"
   lazy val mainargs = "com.lihaoyi" %% "mainargs" % "0.2.1"
+  lazy val circeCore = "io.circe" %% "circe-core" % "0.14.1"
+  lazy val circeParser = "io.circe" %% "circe-parser" % "0.14.1"
+  lazy val circeGeneric = "io.circe" %% "circe-generic" % "0.14.1"
+  lazy val awsCore = "com.amazonaws" % "aws-lambda-java-core" % "1.2.1"
 
   // Hadoop Dependencies
   lazy val HadoopVer = "3.2.0"

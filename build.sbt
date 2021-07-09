@@ -6,7 +6,7 @@ ThisBuild / organization := "io.github.novakov-alexey"
 ThisBuild / organizationName := "novakov-alexey"
 
 lazy val root = (project in file("."))
-  .aggregate(sparkJobs, hadoopJobs, common)
+  .aggregate(sparkJobs, hadoopJobs, common, awsLambda)
   .settings(
     assembleArtifact := false
   )
@@ -76,3 +76,23 @@ lazy val common = (project in file("./modules/common")).settings(
     mainargs
   )
 )
+
+lazy val awsLambda = (project in file("./modules/lambda"))
+  .dependsOn(hadoopJobs)
+  .settings(
+    name := "lambda",
+    assemblyMergeStrategy := {
+      case PathList("scala", "annotation", xs @ _*)
+          if xs.headOption.exists(_.startsWith("nowarn")) =>
+        MergeStrategy.first
+      case x =>
+        val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+        oldStrategy(x)
+    },
+    libraryDependencies ++= Seq(
+      awsCore,
+      circeCore,
+      circeParser,
+      circeGeneric
+    )
+  )

@@ -25,3 +25,21 @@ build-airflow-image:
 	docker build -t apache/airflow:custom-jdk-$(AIRFLOW_VERSION) -f docker/Dockerfile ./docker	
 docker-remove: 
 	docker-compose -f docker/docker-compose.yaml down --volumes all
+
+create-fn:
+	aws lambda create-function \
+	--function-name file-2-file \
+	--role "arn:aws:iam::339364330848:role/Lambda2S3Bucket" \
+	--code S3Bucket=lambda-code-jars-etl,S3Key=lambda-assembly-0.1.0-SNAPSHOT.jar \
+	--runtime java11 \
+	--memory 512 \
+	--handler "etljobs.handler.FileToFileLambda::handleRequest"
+
+update-fn: upload-fn
+	aws lambda update-function-code \
+	--function-name file-2-file \
+	--s3-bucket lambda-code-jars-etl \
+	--s3-key lambda-assembly-0.1.0-SNAPSHOT.jar
+
+upload-fn:
+	aws s3 cp ./modules/lambda/target/scala-2.12/lambda-assembly-0.1.0-SNAPSHOT.jar s3://lambda-code-jars-etl
