@@ -37,10 +37,10 @@ object FsUtil {
     )
   }
 
-  case class JobContext(dagId: String, executionDate: LocalDate)
+  case class JobContext(jobId: String, executionDate: LocalDate)
 
   def contextDir(rootDir: URI, ctx: JobContext): URI =
     new URI(
-      s"$rootDir/${ctx.dagId}/${ctx.executionDate.toString()}"
+      s"$rootDir/${ctx.jobId}/${ctx.executionDate.toString()}"
     )
 }

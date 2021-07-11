@@ -27,7 +27,7 @@ object FileToFile extends App {
 
     val output = contextDir(
       cfg.outputPath,
-      JobContext(cfg.ctx.dagId, cfg.ctx.executionDate)
+      JobContext(cfg.ctx.jobId, cfg.ctx.executionDate)
     )
 
     lazy val destFs = FileSystem.get(output, conf)
@@ -40,8 +40,9 @@ object FileToFile extends App {
       FileSystem.get(output, conf).delete(destPath, false)
       FileUtil.copy(srcFs, srcPath, destFs, destPath, false, conf)
 
-      cfg.processedDir.foreach { dest =>
-        moveFile(src, dest, conf)
+      cfg.processedDir.foreach { suffix =>
+        val output = new URI(s"${cfg.inputPath}/$suffix")
+        moveFile(src, output, conf)
       }
     }
   }

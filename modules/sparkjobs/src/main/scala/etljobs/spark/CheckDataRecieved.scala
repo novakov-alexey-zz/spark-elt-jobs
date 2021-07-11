@@ -50,7 +50,7 @@ object CheckDataRecieved extends App {
       import spark.implicits._
 
       val chunks = cfg.entities.map { entity =>
-        val tablePath = s"${cfg.inputPath}/${cfg.ctx.dagId}/$entity"
+        val tablePath = s"${cfg.inputPath}/${cfg.ctx.jobId}/$entity"
         println(s"table path: $tablePath")
         spark.read
           .format(cfg.inputFormat.toSparkFormat)

@@ -33,9 +33,9 @@ class FileToFileLambda {
       context: Context
   ): Unit = {
     val payload = Source.fromInputStream(in).mkString("")
-
     println(s"Event recieved: $payload")
     println(s"Req id: ${context.getAwsRequestId()}")
+
     val cfg = decode[FileCopyCfg](payload)
     cfg match {
       case Left(value) =>

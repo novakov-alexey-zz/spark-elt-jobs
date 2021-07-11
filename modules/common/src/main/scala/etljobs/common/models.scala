@@ -47,8 +47,8 @@ case class ContextCfg(
         "job execution date to choose file name with. Format YYYY-MM-DD, example 2000-01-01"
     )
     executionDate: LocalDate,
-    @arg(short = 'd', doc = "DAG id to create sub-folder inside the outputPath")
-    dagId: String
+    @arg(short = 'j', doc = "Job id to create sub-folder inside the outputPath")
+    jobId: String
 )
 
 object ContextCfg {

@@ -44,7 +44,7 @@ object CheckFileExists extends App {
   def run(cfg: CheckCfg) = {
     val targetPath = FsUtil.contextDir(
       cfg.inputPath,
-      JobContext(cfg.ctx.dagId, cfg.ctx.executionDate)
+      JobContext(cfg.ctx.jobId, cfg.ctx.executionDate)
     )
     val conf = HadoopCfg.get(cfg.hadoopConfig)
     val inputFiles = FsUtil.listFiles(conf, cfg.globPattern, targetPath)
