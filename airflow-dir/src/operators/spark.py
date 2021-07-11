@@ -11,6 +11,7 @@ class SparkSubmitHookCustom(SparkSubmitHook):
 
     def __init__(self,
                  skip_exit_code: Optional[int] = None,
+                 track_driver: bool = True,
                  conf=None,
                  conn_id='spark_default',
                  files=None,
@@ -45,6 +46,7 @@ class SparkSubmitHookCustom(SparkSubmitHook):
                          status_poll_interval=status_poll_interval, application_args=application_args,
                          env_vars=env_vars, verbose=verbose, spark_binary=spark_binary)
         self.skip_exit_code = skip_exit_code
+        self._should_track_driver_status = self._should_track_driver_status and track_driver
 
     def submit(self, application: str = "", **kwargs: Any) -> int:
         """
@@ -120,6 +122,7 @@ class SparkSubmitHookCustom(SparkSubmitHook):
 class SparkSubmitReturnCode(SparkSubmitOperator):
     def __init__(self,
                  skip_exit_code: Optional[int] = None,
+                 track_driver: bool = True,
                  application='',
                  conf=None,
                  conn_id='spark_default',
@@ -163,6 +166,7 @@ class SparkSubmitReturnCode(SparkSubmitOperator):
             **kwargs
         )
         self.skip_exit_code = skip_exit_code
+        self.track_driver = track_driver
         self._hook: Optional[SparkSubmitHook] = None
 
     def execute(self, context: Dict[str, Any]) -> int:
@@ -179,6 +183,7 @@ class SparkSubmitReturnCode(SparkSubmitOperator):
     def _get_hook(self) -> SparkSubmitHookCustom:
         return SparkSubmitHookCustom(
             skip_exit_code=self.skip_exit_code,
+            track_driver=self.track_driver,
             conf=self._conf,
             conn_id=self._conn_id,
             files=self._files,
