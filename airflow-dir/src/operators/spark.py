@@ -46,7 +46,7 @@ class SparkSubmitHookCustom(SparkSubmitHook):
                          status_poll_interval=status_poll_interval, application_args=application_args,
                          env_vars=env_vars, verbose=verbose, spark_binary=spark_binary)
         self.skip_exit_code = skip_exit_code
-        self._should_track_driver_status = self._should_track_driver_status and track_driver
+        self._should_track_driver_status: bool = self._should_track_driver_status and track_driver
 
     def submit(self, application: str = "", **kwargs: Any) -> int:
         """
