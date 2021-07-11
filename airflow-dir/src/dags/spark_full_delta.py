@@ -17,7 +17,7 @@ class CheckDataCfg(ArgList):
     entities: List[str]
     input_format: str
     execution_date: str = "{{ds}}"
-    dag_id: str = "{{dag.dag_id}}"
+    job_id: str = "{{dag.dag_id}}"
     date_column: str = "date"
     hadoop_options_prefix: Optional[str] = "spark.hadoop."
 
@@ -26,8 +26,8 @@ class CheckDataCfg(ArgList):
                 self.input_path,
                 "--execution-date",
                 self.execution_date,
-                "-d",
-                self.dag_id,
+                "-j",
+                self.job_id,
                 "--date-column",
                 self.date_column,
                 "--input-format",

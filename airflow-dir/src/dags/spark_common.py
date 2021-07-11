@@ -33,7 +33,7 @@ class SparkJobCfg(ArgList):
     input_format: str = "csv"
     output_format: str = "delta"
     execution_date: str = "{{ds}}"
-    dag_id: str = "{{dag.dag_id}}"
+    job_id: str = "{{dag.dag_id}}"
     overwrite: bool = True
     move_files: bool = True
     stream_move_files: bool = False
@@ -46,8 +46,8 @@ class SparkJobCfg(ArgList):
                 self.output_path,
                 "--execution-date",
                 self.execution_date,
-                "-d",
-                self.dag_id
+                "-j",
+                self.job_id
                 ]
 
         if self.overwrite:

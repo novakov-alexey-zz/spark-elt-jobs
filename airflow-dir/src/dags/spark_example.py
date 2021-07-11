@@ -19,7 +19,7 @@ class HadoopJobCfg:
     processed_path: str
     entity_patterns: List[EntityPattern]
     execution_date: str = "{{ds}}"
-    dag_id: str = "{{dag.dag_id}}"
+    job_id: str = "{{dag.dag_id}}"
 
     def to_arg_list(self) -> List[str]:
         args = [
@@ -27,8 +27,8 @@ class HadoopJobCfg:
             self.input_path,
             "--execution-date",
             self.execution_date,
-            "-d",
-            self.dag_id,
+            "-j",
+            self.job_id,
             "-o",
             self.output_path,
             "--processed-dir",
@@ -48,7 +48,7 @@ class CheckFileCfg:
     input_path: str
     glob_pattern: str
     execution_date: str = "{{ds}}"
-    dag_id: str = "{{dag.dag_id}}"
+    job_id: str = "{{dag.dag_id}}"
 
     def to_arg_list(self) -> List[str]:
         args = [
@@ -56,8 +56,8 @@ class CheckFileCfg:
             self.input_path,
             "--execution-date",
             self.execution_date,
-            "-d",
-            self.dag_id,
+            "-j",
+            self.job_id,
             "--glob-pattern",
             self.glob_pattern
         ]
