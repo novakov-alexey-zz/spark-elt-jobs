@@ -1,8 +1,7 @@
 package etljobs.hadoop
 
 import etljobs.common.{FileCopyCfg, HadoopCfg}
-import etljobs.common.FsUtil.{listFiles, contextDir, moveFile}
-import etljobs.common.FsUtil.JobContext
+import etljobs.common.FsUtil.{listFiles, contextDir, moveFile, JobContext}
 
 import org.apache.hadoop.fs.{FileSystem, FileUtil, Path => HPath}
 import mainargs.{main, ParserForMethods}

@@ -90,18 +90,19 @@ def entity_patterns_to_args(patterns: List[EntityPattern]) -> Generator[str, Non
 def hadoop_options_to_args(options: List[Tuple[str, str]], prefix: Optional[str] = None) -> Generator[str, None, None]:
     for name, value in options:
         yield "--hadoop-config"
-        yield (prefix if prefix is not None else "" + name + ":" + value)
+        yield (prefix if prefix is not None else "") + name + ":" + value
 
 
-def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optional[int] = None) -> BaseOperator:
-    return spark_job(task_id, cfg, 'etljobs.spark.FileStreamToDataset', dag, skip_exit_code)
+def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optional[int] = None, track_driver: bool = True) -> BaseOperator:
+    return spark_job(task_id, cfg, 'etljobs.spark.FileStreamToDataset', dag, skip_exit_code, track_driver)
 
 
-def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int] = None) -> BaseOperator:
+def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int] = None, track_driver: bool = True) -> BaseOperator:
     job_args = cfg.to_arg_list()
 
     return SparkSubmitReturnCode(
         skip_exit_code=skip_exit_code,
+        track_driver=track_driver,
         task_id=task_id,
         conn_id='spark_default',
         java_class=main_class,
