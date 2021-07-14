@@ -10,10 +10,14 @@ object Dependencies {
   lazy val circeGeneric = "io.circe" %% "circe-generic" % "0.14.1"
   lazy val awsCore = "com.amazonaws" % "aws-lambda-java-core" % "1.2.1"
 
+  // Glue
+  lazy val glueSpark = "org.apache.spark" %% "spark-sql" % "2.4.3"
+  lazy val awsGlue = "com.amazonaws" % "AWSGlueETL" % "1.0.0"
+
   // Hadoop Dependencies
   lazy val HadoopVer = "3.2.0"
   lazy val AwsSdkVer =
-    "1.11.375" //aws sdk must match to Hadoop<->Aws transitive dependency version
+    "1.11.375" //aws sdk must match to Hadoop transitive dependency version, for example aws 1.11.375 depends on hadoop 3.2.0
 
   lazy val hadoopCommon = "org.apache.hadoop" % "hadoop-common" % HadoopVer
   lazy val hadoopAws = ("org.apache.hadoop" % "hadoop-aws" % HadoopVer)

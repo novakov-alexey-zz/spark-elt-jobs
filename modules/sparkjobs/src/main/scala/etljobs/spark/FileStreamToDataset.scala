@@ -38,6 +38,10 @@ object FileStreamToDataset extends App {
       )
     } else Nil
 
+  private def getTrigger(interval: Long) =
+    if (interval < 0) Trigger.Once
+    else Trigger.ProcessingTime(interval)
+
   private def addOptions(
       stream: DataStreamReader,
       cfg: SparkCopyCfg,
@@ -59,6 +63,7 @@ object FileStreamToDataset extends App {
     val sparkSession =
       sparkWithConfig(sparkCopy.fileCopy.hadoopConfig).getOrCreate()
     lazy val conf = HadoopCfg.get(cfg.sparkCopy.fileCopy.hadoopConfig)
+    lazy val trigger = getTrigger(cfg.triggerInterval)
 
     useResource(sparkSession) { spark =>
       val queries = sparkCopy.fileCopy.entityPatterns.map { entity =>
@@ -87,10 +92,6 @@ object FileStreamToDataset extends App {
 
         val outputPath = new URI(s"$output/${entity.name}")
         val checkpointPath = new URI(s"$outputPath/_checkpoints")
-        val trigger =
-          if (cfg.triggerInterval < 0) Trigger.Once
-          else
-            Trigger.ProcessingTime(cfg.triggerInterval)
         println(
           s"starting stream for input '${input}' to output '${outputPath}' with trigger $trigger"
         )

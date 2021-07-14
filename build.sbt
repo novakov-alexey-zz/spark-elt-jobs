@@ -1,12 +1,14 @@
 import Dependencies._
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
+
+ThisBuild / resolvers += "aws-glue-etl-artifacts" at "https://aws-glue-etl-artifacts.s3.amazonaws.com/release/"
 ThisBuild / scalaVersion := "2.12.14"
 ThisBuild / organization := "io.github.novakov-alexey"
 ThisBuild / organizationName := "novakov-alexey"
 
 lazy val root = (project in file("."))
-  .aggregate(sparkJobs, hadoopJobs, common, awsLambda)
+  .aggregate(sparkJobs, hadoopJobs, common, awsLambda, glueJobs)
   .settings(
     assembleArtifact := false
   )
@@ -95,4 +97,15 @@ lazy val awsLambda = (project in file("./modules/lambda"))
       circeParser,
       circeGeneric
     )
+  )
+
+lazy val glueJobs = (project in file("./modules/gluejobs"))
+  .settings(
+    scalaVersion := "2.11.11",
+    name := "etl-glue-jobs",
+    assemblyPackageScala / assembleArtifact := false,
+    libraryDependencies ++= Seq(
+      glueSpark % Provided,
+      awsGlue % Provided
+    ) ++ hadoopS3Dependencies
   )

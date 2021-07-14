@@ -48,7 +48,7 @@ case class SparkCopyCfg(
     @arg(
       name = "move-files",
       doc =
-        "Whether to move files to processed directory inside the job context"
+        "Whether to move files to processed directory inside the job context. If 'stream-move-file' is set, then 'move-files' flag is ignored"
     )
     moveFiles: Flag,
     @arg(
@@ -70,7 +70,8 @@ case class SparkCopyCfg(
     fileCopy: FileCopyCfg,
     @arg(
       name = "stream-move-files",
-      doc = "Whether to move source files using Spark streaming 'cleanSource' feature"
+      doc =
+        "Whether to move source files using Spark streaming 'cleanSource' feature. If set, then 'move-files' flag is ignored"
     )
     streamMoveFiles: Flag
 )
