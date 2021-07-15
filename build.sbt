@@ -104,11 +104,20 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     scalaVersion := "2.11.11",
     name := "etl-glue-jobs",
     assemblyPackageScala / assembleArtifact := false,
+    s3Upload / mappings := Seq(
+      (
+        target.value / "scala-2.11" / "etl-glue-jobs-assembly-0.1.0-SNAPSHOT.jar",
+        "etl-glue-jobs-assembly-0.1.0-SNAPSHOT.jar"
+      )
+    ),
+    s3Upload / s3Progress := true,
+    s3Upload / s3Host := "lambda-code-jars-etl",
     libraryDependencies ++= Seq(
       glueSpark % Provided,
       awsGlue % Provided
     ) ++ hadoopS3Dependencies
   )
+  .enablePlugins(S3Plugin)
 
 lazy val glueScripts = (project in file("./modules/gluescripts"))
   .dependsOn(glueJobs)
