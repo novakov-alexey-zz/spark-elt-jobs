@@ -8,7 +8,6 @@ import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.streaming.{OutputMode, Trigger}
 
 import scala.io.Source
-
 import java.net.URI
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -25,7 +24,7 @@ case class JobContext(executionDate: LocalDate, jobId: String)
 
 case class JobConfig(
     ctx: JobContext,
-    triggerInterval: Long,
+    triggerInterval: Long, // negative value means Trigger.Once
     inputFormat: String,
     saveFormat: String,
     inputPath: URI,
@@ -49,7 +48,7 @@ object HadoopCfg {
 
 object FsUtil {
 
-  def listFiles(
+  private def listFiles(
       conf: Configuration,
       globPattern: String,
       inputPath: URI
@@ -60,12 +59,16 @@ object FsUtil {
     statuses.map(_.getPath().toUri())
   }
 
-  def moveFile(src: URI, destinationDir: URI, conf: Configuration): Boolean = {
+  private def moveFile(
+      src: URI,
+      destinationDir: URI,
+      conf: Configuration
+  ): Boolean = {
     val fileName = src.toString
       .split("/")
       .lastOption
       .getOrElse(
-        sys.error(s"source file path must point to a file, but was $src")
+        sys.error(s"Failed to get file name from the path: $src")
       )
     val destPath = new Path(s"$destinationDir/$fileName")
     val srcFs = FileSystem.get(src, conf)
@@ -80,6 +83,21 @@ object FsUtil {
       true,
       conf
     )
+  }
+
+  def moveFiles(
+      conf: Configuration,
+      entityPatterns: List[EntityPattern],
+      processedDir: Option[URI],
+      input: URI
+  ): Unit = {
+    val dest =
+      processedDir.getOrElse(new URI(s"$input/processed"))
+    entityPatterns.foreach { p =>
+      val srcFiles = listFiles(conf, p.globPattern, input)
+      println(s"moving files: ${srcFiles.mkString(",\n")}\nto $dest")
+      srcFiles.foreach(src => moveFile(src, dest, conf))
+    }
   }
 }
 
@@ -111,21 +129,6 @@ object File2File {
         .mkString
     }
     DataType.fromJson(jsonSchema).asInstanceOf[StructType]
-  }
-
-  def moveFiles(
-      conf: Configuration,
-      entityPatterns: List[EntityPattern],
-      processedDir: Option[URI],
-      input: URI
-  ): Unit = {
-    val dest =
-      processedDir.getOrElse(new URI(s"$input/processed"))
-    entityPatterns.foreach { p =>
-      val srcFiles = FsUtil.listFiles(conf, p.globPattern, input)
-      println(s"moving files: ${srcFiles.mkString(",\n")}\nto $dest")
-      srcFiles.foreach(src => FsUtil.moveFile(src, dest, conf))
-    }
   }
 
   def run(session: SparkSession, cfg: JobConfig) = {
@@ -166,7 +169,7 @@ object File2File {
     println(s"all ${queries.length} streaming queries are terminated")
 
     if (cfg.moveFiles)
-      moveFiles(
+      FsUtil.moveFiles(
         conf,
         cfg.entityPatterns,
         cfg.processedDir,

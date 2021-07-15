@@ -8,7 +8,7 @@ ThisBuild / organization := "io.github.novakov-alexey"
 ThisBuild / organizationName := "novakov-alexey"
 
 lazy val root = (project in file("."))
-  .aggregate(sparkJobs, hadoopJobs, common, awsLambda, glueJobs)
+  .aggregate(sparkJobs, hadoopJobs, common, awsLambda, glueJobs, glueScripts)
   .settings(
     assembleArtifact := false
   )
@@ -109,3 +109,25 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
       awsGlue % Provided
     ) ++ hadoopS3Dependencies
   )
+
+lazy val glueScripts = (project in file("./modules/gluescripts"))
+  .dependsOn(glueJobs)
+  .settings(
+    scalaVersion := "2.11.11",
+    name := "etl-glue-scripts",
+    assembleArtifact := false,
+    s3Upload / mappings := Seq(
+      (
+        new java.io.File(
+          "modules/gluescripts/src/main/scala/etljobs/glue/FileToFile.scala"
+        ),
+        "novakov.alex/file_to_file"
+      )
+    ),
+    s3Upload / s3Host := "aws-glue-scripts-339364330848-eu-central-1",
+    libraryDependencies ++= Seq(
+      glueSpark % Provided,
+      awsGlue % Provided
+    )
+  )
+  .enablePlugins(S3Plugin)
