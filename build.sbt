@@ -1,4 +1,5 @@
 import Dependencies._
+import com.typesafe.sbt.S3Keys.s3Upload
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -13,6 +14,15 @@ lazy val root = (project in file("."))
     assembleArtifact := false
   )
 
+lazy val sparkInitCommand = s"""
+    import org.apache.spark.sql.SparkSession
+    val session =
+      SparkSession.builder
+        .appName("sbt-shell")
+        .master("local[*]")
+        .getOrCreate()
+    """.stripMargin
+
 lazy val sparkJobs = (project in file("./modules/sparkjobs"))
   .dependsOn(common)
   .settings(
@@ -23,14 +33,7 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
       scalaTest % Test
     ) ++ hadoopS3Dependencies,
     assemblyPackageScala / assembleArtifact := false,
-    console / initialCommands := s"""
-    import org.apache.spark.sql.SparkSession
-    val spark =
-      SparkSession.builder
-        .appName("sbt-shell")
-        .master("local[*]")
-        .getOrCreate()
-    """.stripMargin,
+    console / initialCommands := sparkInitCommand,
     // uses compile classpath for the run task, including "provided" jar (cf http://stackoverflow.com/a/21803413/3827)
     Compile / run := Defaults
       .runTask(
@@ -43,12 +46,6 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
       .runMainTask(Compile / fullClasspath, Compile / run / runner)
       .evaluated
   )
-
-lazy val hadoopS3Dependencies = Seq(
-  hadoopAws,
-  awsS3Sdk,
-  awsDynmodbSdk
-)
 
 lazy val hadoopJobs = (project in file("./modules/hadoopjobs"))
   .dependsOn(common)
@@ -104,6 +101,23 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     scalaVersion := "2.11.11",
     name := "etl-glue-jobs",
     assemblyPackageScala / assembleArtifact := false,
+    assemblyMergeStrategy := {
+      case PathList("scala", "annotation", xs @ _*)
+        if xs.headOption.exists(_.startsWith("nowarn")) =>
+        MergeStrategy.first
+      case x =>
+        val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+        oldStrategy(x)
+    },
+    console / initialCommands := sparkInitCommand,
+    console / cleanupCommands := "spark.close",
+    Compile / run := Defaults
+      .runTask(
+        Compile / fullClasspath,
+        Compile / run / mainClass,
+        Compile / run / runner
+      )
+      .evaluated,
     s3Upload / mappings := Seq(
       (
         target.value / "scala-2.11" / "etl-glue-jobs-assembly-0.1.0-SNAPSHOT.jar",
@@ -112,12 +126,17 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     ),
     s3Upload / s3Progress := true,
     s3Upload / s3Host := "lambda-code-jars-etl",
+//    s3Upload / s3Host := "glue-jars-etljobs",
     libraryDependencies ++= Seq(
       glueSpark % Provided,
-      awsGlue % Provided
-    ) ++ hadoopS3Dependencies
+      awsGlue % Provided,
+      glueHadoopCommon % Provided,
+//      log4jWeb
+    ) ++ hadoopS3Dependencies.map(_ % Provided)
   )
   .enablePlugins(S3Plugin)
+
+lazy val upload = taskKey[Unit]("compile and then upload to S3")
 
 lazy val glueScripts = (project in file("./modules/gluescripts"))
   .dependsOn(glueJobs)
@@ -128,12 +147,18 @@ lazy val glueScripts = (project in file("./modules/gluescripts"))
     s3Upload / mappings := Seq(
       (
         new java.io.File(
-          "modules/gluescripts/src/main/scala/etljobs/glue/FileToFile.scala"
+          "modules/gluescripts/src/main/scala/etljobs/scripts/FileToFile.scala"
         ),
-        "novakov.alex/file_to_file"
+        "FileToFile.scala"
       )
     ),
-    s3Upload / s3Host := "aws-glue-scripts-339364330848-eu-central-1",
+    upload := Def
+      .sequential(
+        Compile / compile,
+        s3Upload.toTask
+      )
+      .value,
+    s3Upload / s3Host := "glue-script-etljobs",
     libraryDependencies ++= Seq(
       glueSpark % Provided,
       awsGlue % Provided

@@ -14,7 +14,7 @@ val currentDate = if (os.exists(filePath)) {
 
 val nextDate = currentDate.plusSeconds(1)
 val executionDate = nextDate.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-val dagId = "spark_streaming"
+val dagId = "spark_full_delta"
 
 s"airflow dags trigger --exec-date $executionDate $dagId".!
 

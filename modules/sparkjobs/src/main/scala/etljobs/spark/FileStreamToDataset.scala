@@ -1,18 +1,21 @@
 package etljobs.spark
 
-import common._
-import etljobs.common.HadoopCfg
-import etljobs.common.SparkOption
-
-import org.apache.spark.sql.streaming.{OutputMode, Trigger, StreamingQuery}
-import org.apache.spark.sql.streaming.DataStreamReader
+import etljobs.common.{HadoopCfg, SparkOption}
+import etljobs.spark.common._
 import mainargs.{ParserForMethods, main}
+import org.apache.spark.sql.functions.{dayofmonth, month, year}
+import org.apache.spark.sql.streaming.{
+  DataStreamReader,
+  OutputMode,
+  StreamingQuery,
+  Trigger
+}
 
 import java.net.URI
 
 object FileStreamToDataset extends App {
 
-  private def waitForTermination(queries: List[StreamingQuery]) = {
+  private def waitForTermination(queries: List[StreamingQuery]): Unit = {
     println(s"waiting for termination")
     queries.foreach(_.awaitTermination())
     println(s"all ${queries.length} streaming queries are terminated")
@@ -24,7 +27,7 @@ object FileStreamToDataset extends App {
         cfg.fileCopy.copy(inputPath =
           new URI(s"${cfg.fileCopy.inputPath}/archive")
         )
-      ).toString()
+      ).toString
       List(
         SparkOption("cleanSource", "archive"),
         SparkOption(
@@ -57,7 +60,7 @@ object FileStreamToDataset extends App {
   }
 
   @main
-  def run(cfg: SparkStreamingCopyCfg) = {
+  def run(cfg: SparkStreamingCopyCfg): Unit = {
     val sparkCopy = cfg.sparkCopy
     val (input, output) = getInOutPaths(sparkCopy.fileCopy)
     val sparkSession =
@@ -77,6 +80,7 @@ object FileStreamToDataset extends App {
           schemaPath,
           entity.name
         )
+        val executionDateCol = dateLit(sparkCopy.fileCopy.ctx.executionDate)
         val stream = addOptions(
           spark.readStream,
           sparkCopy,
@@ -84,24 +88,23 @@ object FileStreamToDataset extends App {
         ).format(sparkCopy.inputFormat.toSparkFormat)
           .schema(schema)
         val df = stream
-          .load(input.toString())
-          .withColumn(
-            "date",
-            dateLit(sparkCopy.fileCopy.ctx.executionDate)
-          )
+          .load(input.toString)
+          .withColumn("year", year(executionDateCol))
+          .withColumn("month", month(executionDateCol))
+          .withColumn("day", dayofmonth(executionDateCol))
 
         val outputPath = new URI(s"$output/${entity.name}")
         val checkpointPath = new URI(s"$outputPath/_checkpoints")
         println(
-          s"starting stream for input '${input}' to output '${outputPath}' with trigger $trigger"
+          s"starting stream for input '$input' to output '$outputPath' with trigger $trigger"
         )
         df.writeStream
           .outputMode(OutputMode.Append)
-          .option("checkpointLocation", checkpointPath.toString())
-          .partitionBy(sparkCopy.partitionBy)
+          .option("checkpointLocation", checkpointPath.toString)
+          .partitionBy(sparkCopy.partitionBy: _*)
           .trigger(trigger)
           .format(sparkCopy.saveFormat.toSparkFormat)
-          .start(outputPath.toString())
+          .start(outputPath.toString)
       }
 
       if (queries.nonEmpty)

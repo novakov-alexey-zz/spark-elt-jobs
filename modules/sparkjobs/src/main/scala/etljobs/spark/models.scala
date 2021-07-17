@@ -2,9 +2,7 @@ package etljobs.spark
 
 import etljobs.common.{FileCopyCfg, SparkOption}
 import etljobs.common.MainArgsUtil.UriRead
-import DataFormat._
-
-import mainargs.{main, arg, Flag, TokensReader, ParserForClass}
+import mainargs._
 
 import java.net.URI
 
@@ -42,7 +40,7 @@ case class SparkCopyCfg(
     inputFormat: DataFormat,
     @arg(
       name = "output-format",
-      doc = "Data ouput format to be used by Spark Datasource API on write"
+      doc = "Data output format to be used by Spark Datasource API on write"
     )
     saveFormat: DataFormat,
     @arg(
@@ -64,9 +62,9 @@ case class SparkCopyCfg(
     schemaPath: Option[URI],
     @arg(
       name = "partition-by",
-      doc = "Table column to parition by"
+      doc = "Dataframe column list to partition by. Options: [year, month, day]"
     )
-    partitionBy: String,
+    partitionBy: List[String],
     fileCopy: FileCopyCfg,
     @arg(
       name = "stream-move-files",
@@ -77,7 +75,8 @@ case class SparkCopyCfg(
 )
 
 object SparkCopyCfg {
-  implicit def copyParamsParser = ParserForClass[SparkCopyCfg]
+  implicit def copyParamsParser: ParserForClass[SparkCopyCfg] =
+    ParserForClass[SparkCopyCfg]
 }
 
 @main
@@ -92,5 +91,6 @@ case class SparkStreamingCopyCfg(
 )
 
 object SparkStreamingCopyCfg {
-  implicit def copyParamsParser = ParserForClass[SparkStreamingCopyCfg]
+  implicit def copyParamsParser: ParserForClass[SparkStreamingCopyCfg] =
+    ParserForClass[SparkStreamingCopyCfg]
 }

@@ -1,21 +1,19 @@
 package etljobs.spark
 
-import DataFormat._
-import common._
 import etljobs.common.{EntityPattern, SparkOption}
-
-import mainargs.{main, ParserForMethods}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.types.StructType
+import etljobs.spark.DataFormat._
+import etljobs.spark.common._
 import io.delta.tables._
+import mainargs.{ParserForMethods, main}
+import org.apache.spark.sql.functions.{dayofmonth, month, year}
+import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 
 import java.net.URI
 
 object FileToDataset extends App {
   @main
-  def run(params: SparkCopyCfg) =
+  def run(params: SparkCopyCfg): Unit =
     sparkCopy(params)
 
   private def mergeTable(
@@ -24,7 +22,7 @@ object FileToDataset extends App {
       spark: SparkSession,
       dedupKey: String,
       input: DataFrame,
-      partitionBy: String
+      partitionBy: List[String]
   ) = {
     val target =
       DeltaTable
@@ -33,7 +31,7 @@ object FileToDataset extends App {
 
     val targetWithSchema = schema
       .fold(target)(target.addColumns)
-      .partitionedBy(partitionBy)
+      .partitionedBy(partitionBy: _*)
       .execute()
       .as("target")
 
@@ -65,12 +63,15 @@ object FileToDataset extends App {
           acc.option(opt.name, opt.value)
         }
 
+    val executionDateCol = dateLit(cfg.fileCopy.ctx.executionDate)
     val inputDF = inputDataWithOptions
-      .load(input.toString())
-      .withColumn("date", dateLit(cfg.fileCopy.ctx.executionDate))
+      .load(input.toString)
+      .withColumn("year", year(executionDateCol))
+      .withColumn("month", month(executionDateCol))
+      .withColumn("day", dayofmonth(executionDateCol))
 
     lazy val inputDFToWrite =
-      inputDF.write.partitionBy(cfg.partitionBy).mode(saveMode)
+      inputDF.write.partitionBy(cfg.partitionBy: _*).mode(saveMode)
 
     val writer = cfg.saveFormat match {
       case CSV     => inputDFToWrite.csv _
@@ -94,10 +95,10 @@ object FileToDataset extends App {
           inputDFToWrite.format(cfg.saveFormat.toSparkFormat).save(path)
     }
 
-    writer(output.toString())
+    writer(output.toString)
   }
 
-  def sparkCopy(cfg: SparkCopyCfg) = {
+  def sparkCopy(cfg: SparkCopyCfg): Unit = {
     val (input, output) = getInOutPaths(cfg.fileCopy)
     val sparkSession =
       sparkWithConfig(cfg.fileCopy.hadoopConfig).getOrCreate()
@@ -122,10 +123,7 @@ object FileToDataset extends App {
   }
 
   private def getSaveMode(overwrite: Boolean) =
-    overwrite match {
-      case true => SaveMode.Overwrite
-      case _    => SaveMode.ErrorIfExists
-    }
+    if (overwrite) SaveMode.Overwrite else SaveMode.ErrorIfExists
 
   ParserForMethods(this).runOrExit(args)
 }

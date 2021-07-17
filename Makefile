@@ -43,3 +43,15 @@ update-fn: upload-fn
 
 upload-fn:
 	aws s3 cp ./modules/lambda/target/scala-2.12/lambda-assembly-0.1.0-SNAPSHOT.jar s3://lambda-code-jars-etl
+
+create-glue-job:
+	aws cloudformation create-stack \
+    --stack-name glue-jobs \
+    --template-body file://./cloud-formation/glue-jobs/file-to-file.yaml
+delete-glue-job:
+	aws cloudformation delete-stack \
+        --stack-name glue-jobs
+update-glue-job: delete-glue-job
+	aws cloudformation create-stack \
+    --stack-name glue-jobs \
+    --template-body file://./cloud-formation/glue-jobs/file-to-file.yaml

@@ -1,16 +1,16 @@
 package etljobs.glue
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FileSystem, Path, FileUtil}
-import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{DataType, StructType}
-import org.apache.spark.sql.functions.lit
+import org.apache.hadoop.fs.{FileSystem, FileUtil, Path}
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.streaming.{OutputMode, Trigger}
+import org.apache.spark.sql.types.{DataType, StructType}
+import org.apache.spark.sql.{Column, SparkSession}
 
-import scala.io.Source
 import java.net.URI
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import scala.io.Source
 
 case class EntityPattern(
     name: String,
@@ -32,14 +32,14 @@ case class JobConfig(
     hadoopConfig: List[SparkOption],
     readerOptions: List[SparkOption],
     schemaPath: URI,
-    partitionBy: String,
+    partitionBy: List[String],
     moveFiles: Boolean,
     entityPatterns: List[EntityPattern],
     processedDir: Option[URI] = None
 )
 
 object HadoopCfg {
-  def get(options: List[SparkOption]) =
+  def get(options: List[SparkOption]): Configuration =
     options.foldLeft(new Configuration) { case (acc, o) =>
       acc.set(o.name, o.value)
       acc
@@ -56,7 +56,7 @@ object FsUtil {
     val fs = FileSystem.get(inputPath, conf)
     val path = new Path(s"$inputPath/$globPattern")
     val statuses = fs.globStatus(path)
-    statuses.map(_.getPath().toUri())
+    statuses.map(_.getPath.toUri())
   }
 
   private def moveFile(
@@ -72,8 +72,8 @@ object FsUtil {
       )
     val destPath = new Path(s"$destinationDir/$fileName")
     val srcFs = FileSystem.get(src, conf)
-    val srcPath = new Path(src.toString())
-    val destFs = FileSystem.get(destPath.toUri(), conf)
+    val srcPath = new Path(src.toString)
+    val destFs = FileSystem.get(destPath.toUri, conf)
 
     FileUtil.copy(
       srcFs,
@@ -102,16 +102,18 @@ object FsUtil {
 }
 
 object File2File {
-  val DateFormatter = DateTimeFormatter.ofPattern("YYYY-MM-dd")
+  val DatePattern = "yyyy-MM-dd"
+  val DateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern(DatePattern)
 
-  def dateLit(date: LocalDate) =
-    lit(date.format(DateFormatter))
+  def dateLit(date: LocalDate): Column =
+    to_date(lit(date.format(DateFormatter)), DatePattern)
 
   def useResource[T <: AutoCloseable, U](r: T)(f: T => U): U =
     try f(r)
     finally r.close()
 
-  def getTrigger(interval: Long) =
+  def getTrigger(interval: Long): Trigger =
     if (interval < 0) Trigger.Once
     else Trigger.ProcessingTime(interval)
 
@@ -131,37 +133,39 @@ object File2File {
     DataType.fromJson(jsonSchema).asInstanceOf[StructType]
   }
 
-  def run(session: SparkSession, cfg: JobConfig) = {
+  def run(session: SparkSession, cfg: JobConfig): Unit = {
     val conf = HadoopCfg.get(cfg.hadoopConfig)
     val trigger = getTrigger(cfg.triggerInterval)
-    val stream = cfg.readerOptions.foldLeft(session.readStream) { (acc, o) =>
-      acc.option(o.name, o.value)
-    }
     val input = new URI(
-      s"${cfg.inputPath}/${cfg.ctx.jobId}/${cfg.ctx.executionDate.toString()}"
+      s"${cfg.inputPath}/${cfg.ctx.jobId}/${cfg.ctx.executionDate.toString}"
     )
     val output = new URI(s"${cfg.outputPath}/${cfg.ctx.jobId}")
 
     val queries = cfg.entityPatterns.map { entity =>
+      val stream = cfg.readerOptions
+        .foldLeft(session.readStream) { (acc, o) =>
+          acc.option(o.name, o.value)
+        }
+        .option("pathGlobFilter", entity.globPattern)
+
       val schema = readSchema(conf, cfg.schemaPath, entity.name)
       val outputPath = new URI(s"$output/${entity.name}")
       val checkpointPath = new URI(s"$outputPath/_checkpoints")
-
+      val executionDateCol = dateLit(cfg.ctx.executionDate)
       stream
         .format(cfg.inputFormat)
         .schema(schema)
-        .load(input.toString())
-        .withColumn(
-          "date",
-          dateLit(cfg.ctx.executionDate)
-        )
+        .load(input.toString)
+        .withColumn("year", year(executionDateCol))
+        .withColumn("month", month(executionDateCol))
+        .withColumn("day", dayofmonth(executionDateCol))
         .writeStream
         .outputMode(OutputMode.Append)
-        .option("checkpointLocation", checkpointPath.toString())
-        .partitionBy(cfg.partitionBy)
+        .option("checkpointLocation", checkpointPath.toString)
+        .partitionBy(cfg.partitionBy: _*)
         .trigger(trigger)
         .format(cfg.saveFormat)
-        .start(outputPath.toString())
+        .start(outputPath.toString)
     }
 
     println(s"waiting for termination")
