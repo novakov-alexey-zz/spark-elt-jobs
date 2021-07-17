@@ -1,11 +1,11 @@
-from dataclasses import dataclass
-from typing import List, Tuple, Optional, Generator
-
-from airflow import DAG
 from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
 from dags.macros import ConnectionGrabber, from_json
+from dataclasses import dataclass
 from operators.spark import SparkSubmitReturnCode
+from typing import List, Tuple, Optional, Generator
+
+from airflow import DAG
 
 
 @dataclass
@@ -26,7 +26,7 @@ class SparkJobCfg(ArgList):
     output_path: str
     reader_options: List[str]
     hadoop_options: List[Tuple[str, str]]
-    partition_by: str
+    partition_by: List[str]
     entity_patterns: List[EntityPattern]
     input_schema_path: str
     trigger_interval: int = -1
@@ -72,7 +72,8 @@ class SparkJobCfg(ArgList):
         args += hadoop_options_to_args(
             self.hadoop_options, self.hadoop_options_prefix)
 
-        args += ["--partition-by", self.partition_by]
+        for p in self.partition_by:
+            args += ["--partition-by", p]
 
         args += entity_patterns_to_args(self.entity_patterns)
 
@@ -93,11 +94,13 @@ def hadoop_options_to_args(options: List[Tuple[str, str]], prefix: Optional[str]
         yield (prefix if prefix is not None else "") + name + ":" + value
 
 
-def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optional[int] = None, track_driver: bool = True) -> BaseOperator:
+def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optional[int] = None,
+                     track_driver: bool = True) -> BaseOperator:
     return spark_job(task_id, cfg, 'etljobs.spark.FileStreamToDataset', dag, skip_exit_code, track_driver)
 
 
-def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int] = None, track_driver: bool = True) -> BaseOperator:
+def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int] = None,
+              track_driver: bool = True) -> BaseOperator:
     job_args = cfg.to_arg_list()
 
     return SparkSubmitReturnCode(

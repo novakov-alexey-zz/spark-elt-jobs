@@ -1,11 +1,11 @@
 from __future__ import print_function
 
-from datetime import timedelta
-
-import airflow
 from airflow.utils.dates import days_ago
+from datetime import timedelta
 from operators.file_operators import CheckReceivedFileOperator
 from operators.file_operators import FileToPredictableLocationOperator
+
+import airflow
 
 args = {
     'owner': 'alexey',

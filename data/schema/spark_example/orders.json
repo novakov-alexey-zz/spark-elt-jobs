@@ -1,35 +1,47 @@
 {
-    "type": "struct",
-    "fields": [
-        {
-            "name": "orderId",
-            "type": "integer",
-            "nullable": true,
-            "metadata": {}
-        },
-        {
-            "name": "customerId",
-            "type": "integer",
-            "nullable": true,
-            "metadata": {}
-        },
-        {
-            "name": "itemId",
-            "type": "integer",
-            "nullable": true,
-            "metadata": {}
-        },
-        {
-            "name": "quantity",
-            "type": "integer",
-            "nullable": true,
-            "metadata": {}
-        },
-        {
-            "name": "date",
-            "type": "date",
-            "nullable": false,
-            "metadata": {}
-        }
-    ]
+  "type": "struct",
+  "fields": [
+    {
+      "name": "orderId",
+      "type": "integer",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "customerId",
+      "type": "integer",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "itemId",
+      "type": "integer",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "quantity",
+      "type": "integer",
+      "nullable": true,
+      "metadata": {}
+    },
+    {
+      "name": "year",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "month",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "day",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    }
+  ]
 }

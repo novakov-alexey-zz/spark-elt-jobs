@@ -1,49 +1,49 @@
 {
-    "name": "demo_11",
-    "nodes": [
-        {
-            "name": "Start",
-            "_type": "airflow.operators.dummy.DummyOperator",
-            "parameters": {}
-        },
-        {
-            "name": "HTTPRequest",
-            "_type": "airflow.providers.http.operators.http.SimpleHttpOperator",
-            "position": [
-                520,
-                360
-            ],
-            "parameters": {
-                "http_conn_id": "dummyapi",
-                "method": "GET",
-                "endpoint": "/api/users/2",
-                "headers": {},
-                "extra_options": {}
-            }
-        },
-        {
-            "name": "End",
-            "_type": "airflow.operators.dummy.DummyOperator",
-            "parameters": {}
-        },
-        {
-            "name": "ExecuteCommand",
-            "_type": "airflow.operators.bash.BashOperator",
-            "parameters": {
-                "bash_command": "echo test"
-            }
-        }
-    ],
-    "connections": {
-        "Start": [
-            "ExecuteCommand",
-            "HTTPRequest"
-        ],
-        "HTTPRequest": [
-            "End"
-        ],
-        "ExecuteCommand": [
-            "End"
-        ]
+  "name": "demo_11",
+  "nodes": [
+    {
+      "name": "Start",
+      "_type": "airflow.operators.dummy.DummyOperator",
+      "parameters": {}
+    },
+    {
+      "name": "HTTPRequest",
+      "_type": "airflow.providers.http.operators.http.SimpleHttpOperator",
+      "position": [
+        520,
+        360
+      ],
+      "parameters": {
+        "http_conn_id": "dummyapi",
+        "method": "GET",
+        "endpoint": "/api/users/2",
+        "headers": {},
+        "extra_options": {}
+      }
+    },
+    {
+      "name": "End",
+      "_type": "airflow.operators.dummy.DummyOperator",
+      "parameters": {}
+    },
+    {
+      "name": "ExecuteCommand",
+      "_type": "airflow.operators.bash.BashOperator",
+      "parameters": {
+        "bash_command": "echo test"
+      }
     }
+  ],
+  "connections": {
+    "Start": [
+      "ExecuteCommand",
+      "HTTPRequest"
+    ],
+    "HTTPRequest": [
+      "End"
+    ],
+    "ExecuteCommand": [
+      "End"
+    ]
+  }
 }

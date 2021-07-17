@@ -1,13 +1,13 @@
+from airflow.operators.dummy import DummyOperator
+from airflow.operators.python_operator import ShortCircuitOperator
+from dags.spark_common import SparkJobCfg, spark_stream_job, entity_patterns, user_defined_macros, ArgList
+from dags.spark_common import hadoop_options_to_args, dag_schema_path, spark_job, hadoop_options, LOCAL_INPUT, \
+    LOCAL_DATAWAREHOUSE
 from dataclasses import dataclass
-from airflow import DAG
 from datetime import timedelta
 from typing import List, Tuple, Optional
 
-from dags.spark_common import hadoop_options_to_args, dag_schema_path, spark_job, hadoop_options, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
-from dags.spark_common import SparkJobCfg, spark_stream_job, entity_patterns, user_defined_macros, ArgList
-from airflow.operators.python import BranchPythonOperator
-from airflow.operators.dummy import DummyOperator
-from airflow.operators.python_operator import ShortCircuitOperator
+from airflow import DAG
 
 
 @dataclass
@@ -41,6 +41,7 @@ class CheckDataCfg(ArgList):
             args += ["--entities", e]
 
         return args
+
 
 ########################################
 # DAG construction site

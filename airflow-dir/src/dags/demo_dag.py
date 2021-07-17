@@ -3,7 +3,6 @@ import os
 
 from datetime import datetime
 from dags.dynamic_dag_utils import create_dag
-from dags.macros import ConnectionGrabber, from_json
 
 default_args = {
     "owner": "alexey",

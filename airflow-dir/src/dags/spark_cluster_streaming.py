@@ -1,8 +1,8 @@
-from airflow import DAG
+from dags.spark_common import SparkJobCfg, spark_stream_job, entity_patterns, user_defined_macros
+from dags.spark_common import dag_schema_path, hadoop_options, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
 from datetime import timedelta
 
-from dags.spark_common import dag_schema_path, hadoop_options, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
-from dags.spark_common import SparkJobCfg, spark_stream_job, entity_patterns, user_defined_macros
+from airflow import DAG
 
 args = {
     'owner': 'alexey',
@@ -23,7 +23,7 @@ spark_streaming_job_cfg = SparkJobCfg(
     entity_patterns=entity_patterns,
     reader_options=["header:true"],
     hadoop_options=hadoop_options(),
-    partition_by="date",
+    partition_by=["year", "month", "day"],
     input_schema_path=dag_schema_path,
     trigger_interval=3000
 )

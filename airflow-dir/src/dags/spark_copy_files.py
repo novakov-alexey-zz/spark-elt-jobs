@@ -1,14 +1,14 @@
+from airflow.models import BaseOperator
+from airflow.operators.bash import BashOperator
+from dags.spark_common import EntityPattern, SparkJobCfg, entity_patterns_to_args, dag_schema_path, spark_job
+from dags.spark_common import hadoop_options_to_args, spark_stream_job, entity_patterns, hadoop_options, \
+    user_defined_macros, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
 from dataclasses import dataclass
 from datetime import timedelta
 from functools import reduce
 from typing import List, Tuple
 
 from airflow import DAG
-from airflow.models import BaseOperator
-from airflow.operators.bash import BashOperator
-from dags.spark_common import EntityPattern, SparkJobCfg, entity_patterns_to_args, dag_schema_path, spark_job
-from dags.spark_common import hadoop_options_to_args, spark_stream_job, entity_patterns, hadoop_options, \
-    user_defined_macros, LOCAL_INPUT, LOCAL_DATAWAREHOUSE
 
 
 @dataclass

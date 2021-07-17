@@ -1,9 +1,8 @@
 import os
 import subprocess
-from typing import Optional, Any, Dict
-
 from airflow.exceptions import AirflowException
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator, SparkSubmitHook
+from typing import Optional, Any, Dict
 
 
 # Custom SparkSubmitHook to pass returncode to XCom if user wants to skip it
