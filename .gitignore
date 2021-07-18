@@ -10,7 +10,6 @@ metals.sbt
 data/input
 data/raw-data
 data/dw
-*.crc
 github
 airflow-dir/logs
 metastore_db
@@ -18,3 +17,5 @@ derby.log
 execution-date.txt
 .idea
 .ammonite
+private.env
+.mypy_cache

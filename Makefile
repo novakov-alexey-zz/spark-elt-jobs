@@ -1,3 +1,9 @@
+.ONESHELL:
+.SHELL := /bin/bash
+
+include ./private.env
+export
+
 AIRFLOW_VERSION=2.1.0
 
 install:
@@ -44,14 +50,11 @@ update-fn: upload-fn
 upload-fn:
 	aws s3 cp ./modules/lambda/target/scala-2.12/lambda-assembly-0.1.0-SNAPSHOT.jar s3://lambda-code-jars-etl
 
-create-glue-job:
-	aws cloudformation create-stack \
-    --stack-name glue-jobs \
-    --template-body file://./cloud-formation/glue-jobs/file-to-file.yaml
 delete-glue-job:
 	aws cloudformation delete-stack \
         --stack-name glue-jobs
-update-glue-job: delete-glue-job
+recreate-glue-job: delete-glue-job
 	aws cloudformation create-stack \
     --stack-name glue-jobs \
-    --template-body file://./cloud-formation/glue-jobs/file-to-file.yaml
+    --template-body file://./cloud-formation/glue-jobs/file-to-file.yaml \
+    --parameters ParameterKey=CFNIAMRoleName,ParameterValue=$(CFNIAMRoleName) ParameterKey=CFNExtraJars,ParameterValue=$(CFNExtraJars)
