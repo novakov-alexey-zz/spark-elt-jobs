@@ -146,8 +146,6 @@ object File2File {
         .foldLeft(session.readStream) { (acc, o) =>
           acc.option(o.name, o.value)
         }
-        .option("pathGlobFilter", entity.globPattern)
-
       val schema = readSchema(conf, cfg.schemaPath, entity.name)
       val outputPath = new URI(s"$output/${entity.name}")
       val checkpointPath = new URI(s"$outputPath/_checkpoints")
@@ -155,7 +153,7 @@ object File2File {
       stream
         .format(cfg.inputFormat)
         .schema(schema)
-        .load(input.toString)
+        .load(s"$input/${entity.globPattern}")
         .withColumn("year", year(executionDateCol))
         .withColumn("month", month(executionDateCol))
         .withColumn("day", dayofmonth(executionDateCol))
