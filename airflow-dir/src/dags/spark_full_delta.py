@@ -69,7 +69,7 @@ spark_streaming_job_cfg = SparkJobCfg(
         "header:true",  # CSV source to skip header
     ],
     hadoop_options=hadoop_options(),
-    partition_by="date",
+    partition_by=["year", "month", "day"],
     input_schema_path=dag_schema_path,
     trigger_interval=-1
 )

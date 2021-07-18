@@ -79,7 +79,7 @@ def spark_batch_job(task_id: str, cfg: SparkJobCfg, dag: DAG) -> BaseOperator:
     return spark_job(task_id, cfg, 'etljobs.spark.FileToDataset', dag)
 
 
-def mkString(l: List[str], sep: str = ' ') -> str:
+def mk_string(l: List[str], sep: str = ' ') -> str:
     return reduce(lambda a, b: f"{a}{sep}{b}", l)
 
 
@@ -87,7 +87,7 @@ def hadoop_copy(task_id: str, cfg: HadoopJobCfg, dag: DAG) -> BaseOperator:
     return BashOperator(
         task_id=task_id,
         bash_command="java -cp " + HADOOP_JOBS_JAR +
-                     " etljobs.hadoop.FileToFile " + mkString(cfg.to_arg_list()),
+                     " etljobs.hadoop.FileToFile " + mk_string(cfg.to_arg_list()),
         dag=dag
     )
 
@@ -96,7 +96,7 @@ def check_files_task(cfg: CheckFileCfg, dag: DAG) -> BaseOperator:
     return BashOperator(
         task_id='check-file',
         bash_command="java -cp " + HADOOP_JOBS_JAR +
-                     " etljobs.hadoop.CheckFileExists " + mkString(cfg.to_arg_list()),
+                     " etljobs.hadoop.CheckFileExists " + mk_string(cfg.to_arg_list()),
         skip_exit_code=99,
         dag=dag
     )
@@ -146,7 +146,7 @@ spark_job_cfg = SparkJobCfg(
     entity_patterns=entity_patterns,
     reader_options=["header:true"],
     hadoop_options=hadoop_options(),
-    partition_by="date",
+    partition_by=["year", "month", "day"],
     input_schema_path=dag_schema_path,
 )
 files_stream_to_dataset = spark_stream_job(
