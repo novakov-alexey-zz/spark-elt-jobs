@@ -1,5 +1,4 @@
 import Dependencies._
-import com.typesafe.sbt.S3Keys.s3Upload
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -14,7 +13,7 @@ lazy val root = (project in file("."))
     assembleArtifact := false
   )
 
-lazy val sparkInitCommand = s"""
+lazy val sparkLocalCmd = s"""
     import org.apache.spark.sql.SparkSession
     val session =
       SparkSession.builder
@@ -30,10 +29,9 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
     libraryDependencies ++= Seq(
       sparkSql % Provided,
       delta,
-      scalaTest % Test
-    ) ++ hadoopS3Dependencies,
+    ) ++ sparkHadoopS3Dependencies,
     assemblyPackageScala / assembleArtifact := false,
-    console / initialCommands := sparkInitCommand,
+    console / initialCommands := sparkLocalCmd,
     // uses compile classpath for the run task, including "provided" jar (cf http://stackoverflow.com/a/21803413/3827)
     Compile / run := Defaults
       .runTask(
@@ -63,7 +61,7 @@ lazy val hadoopJobs = (project in file("./modules/hadoopjobs"))
     },
     libraryDependencies ++= Seq(
       hadoopCommon
-    ) ++ hadoopS3Dependencies
+    ) ++ sparkHadoopS3Dependencies
   )
 
 lazy val common = (project in file("./modules/common")).settings(
@@ -89,7 +87,7 @@ lazy val awsLambda = (project in file("./modules/lambda"))
         oldStrategy(x)
     },
     libraryDependencies ++= Seq(
-      awsCore,
+      awsLambdaCore,
       circeCore,
       circeParser,
       circeGeneric
@@ -101,7 +99,7 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     scalaVersion := "2.11.11",
     name := "etl-glue-jobs",
     assemblyPackageScala / assembleArtifact := false,
-    console / initialCommands := sparkInitCommand,
+    console / initialCommands := sparkLocalCmd,
     console / cleanupCommands := "spark.close",
     Compile / run := Defaults
       .runTask(
@@ -118,13 +116,11 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     ),
     s3Upload / s3Progress := true,
     s3Upload / s3Host := "glue-extra-jars-etljobs",
-//    s3Upload / s3Host := "glue-jars-etljobs",
     libraryDependencies ++= Seq(
       glueSpark % Provided,
       awsGlue % Provided,
       glueHadoopCommon % Provided,
-//      log4jWeb
-    ) ++ hadoopS3Dependencies.map(_ % Provided)
+    ) ++ sparkHadoopS3Dependencies.map(_ % Provided)
   )
   .enablePlugins(S3Plugin)
 
@@ -136,6 +132,7 @@ lazy val glueScripts = (project in file("./modules/gluescripts"))
     scalaVersion := "2.11.11",
     name := "etl-glue-scripts",
     assembleArtifact := false,
+    s3Upload / s3Host := "glue-script-etljobs",
     s3Upload / mappings := Seq(
       (
         new java.io.File(
@@ -150,7 +147,6 @@ lazy val glueScripts = (project in file("./modules/gluescripts"))
         s3Upload.toTask
       )
       .value,
-    s3Upload / s3Host := "glue-script-etljobs",
     libraryDependencies ++= Seq(
       glueSpark % Provided,
       awsGlue % Provided
