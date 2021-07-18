@@ -101,14 +101,6 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     scalaVersion := "2.11.11",
     name := "etl-glue-jobs",
     assemblyPackageScala / assembleArtifact := false,
-    assemblyMergeStrategy := {
-      case PathList("scala", "annotation", xs @ _*)
-        if xs.headOption.exists(_.startsWith("nowarn")) =>
-        MergeStrategy.first
-      case x =>
-        val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
-        oldStrategy(x)
-    },
     console / initialCommands := sparkInitCommand,
     console / cleanupCommands := "spark.close",
     Compile / run := Defaults
@@ -125,7 +117,7 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
       )
     ),
     s3Upload / s3Progress := true,
-    s3Upload / s3Host := "lambda-code-jars-etl",
+    s3Upload / s3Host := "glue-extra-jars-etljobs",
 //    s3Upload / s3Host := "glue-jars-etljobs",
     libraryDependencies ++= Seq(
       glueSpark % Provided,
