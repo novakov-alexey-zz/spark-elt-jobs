@@ -28,7 +28,7 @@ lazy val sparkJobs = (project in file("./modules/sparkjobs"))
     name := "etl-spark-jobs",
     libraryDependencies ++= Seq(
       sparkSql % Provided,
-      delta,
+      delta
     ) ++ sparkHadoopS3Dependencies,
     assemblyPackageScala / assembleArtifact := false,
     console / initialCommands := sparkLocalCmd,
@@ -99,7 +99,14 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     scalaVersion := "2.11.11",
     name := "etl-glue-jobs",
     assemblyPackageScala / assembleArtifact := false,
-    console / initialCommands := sparkLocalCmd,
+    assemblyMergeStrategy := {
+      case "org/apache/spark/unused/UnusedStubClass.class" =>
+        MergeStrategy.first
+      case x =>
+        val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+        oldStrategy(x)
+    } ,
+      console / initialCommands := sparkLocalCmd,
     console / cleanupCommands := "spark.close",
     Compile / run := Defaults
       .runTask(
@@ -117,9 +124,10 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     s3Upload / s3Progress := true,
     s3Upload / s3Host := "glue-extra-jars-etljobs",
     libraryDependencies ++= Seq(
+      hudiSparkBundle % Provided,
       glueSpark % Provided,
       awsGlue % Provided,
-      glueHadoopCommon % Provided,
+      glueHadoopCommon % Provided
     ) ++ sparkHadoopS3Dependencies.map(_ % Provided)
   )
   .enablePlugins(S3Plugin)
@@ -139,6 +147,12 @@ lazy val glueScripts = (project in file("./modules/gluescripts"))
           "modules/gluescripts/src/main/scala/etljobs/scripts/FileToFile.scala"
         ),
         "FileToFile.scala"
+      ),
+      (
+        new java.io.File(
+          "modules/gluescripts/src/main/scala/etljobs/scripts/HudiScript.scala"
+        ),
+        "HudiScript.scala"
       )
     ),
     upload := Def

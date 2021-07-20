@@ -22,14 +22,16 @@ object Dependencies {
   }
 
   // Glue: Spark & Hadoop
-  lazy val glueSpark = "org.apache.spark" %% "spark-sql" % "2.4.3"
+  lazy val glueSparkVer = "2.4.3"
+  lazy val glueSpark = "org.apache.spark" %% "spark-sql" % glueSparkVer
   lazy val awsGlue = "com.amazonaws" % "AWSGlueETL" % "1.0.0"
   lazy val glueHadoopVer = "2.8.5"
-//  lazy val glueHadoopS3Dependencies: Seq[sbt.ModuleID] = hadoopS3Dependencies(
-//    glueHadoopVer
-//  )
   lazy val glueHadoopCommon =
     "org.apache.hadoop" % "hadoop-common" % glueHadoopVer
+  // Glue: Hudi Deps
+  lazy val hudiSparkBundle = "org.apache.hudi" %% "hudi-spark-bundle" % "0.8.0"
+  lazy val sparkAvro = "org.apache.spark" %% "spark-avro" % glueSparkVer
+  lazy val httpClient = "org.apache.httpcomponents" % "httpclient" % "4.5.13"
 
   // Hadoop Dependencies
   lazy val HadoopVer = "3.2.0"

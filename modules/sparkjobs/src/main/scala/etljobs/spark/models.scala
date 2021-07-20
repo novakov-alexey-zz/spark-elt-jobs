@@ -1,7 +1,7 @@
 package etljobs.spark
 
-import etljobs.common.{FileCopyCfg, SparkOption}
 import etljobs.common.MainArgsUtil.UriRead
+import etljobs.common.{FileCopyCfg, SparkOption}
 import mainargs._
 
 import java.net.URI
