@@ -1,4 +1,4 @@
-package etljobs.spark
+package etljobs.sparkcommon
 
 import etljobs.common.MainArgsUtil.UriRead
 import etljobs.common.{FileCopyCfg, SparkOption}
@@ -21,6 +21,7 @@ object DataFormat {
             case "json"    => Right(JSON)
             case "parquet" => Right(Parquet)
             case "delta"   => Right(Delta)
+            case "hudi"    => Right(Hudi)
             case _         => Left("Unknown file format")
           }
       )
@@ -29,6 +30,7 @@ object DataFormat {
   case object JSON extends DataFormat
   case object Parquet extends DataFormat
   case object Delta extends DataFormat
+  case object Hudi extends DataFormat
 }
 
 @main
@@ -71,14 +73,19 @@ case class SparkCopyCfg(
       doc =
         "Whether to move source files using Spark streaming 'cleanSource' feature. If set, then 'move-files' flag is ignored"
     )
-    streamMoveFiles: Flag
+    streamMoveFiles: Flag,
+    @arg(
+      name = "hudi-sync-to-hive",
+      doc =
+        "If set, Spark will sync Hudi table to Hive"
+    )
+    syncToHive: Flag
 )
 
 object SparkCopyCfg {
   implicit def copyParamsParser: ParserForClass[SparkCopyCfg] =
     ParserForClass[SparkCopyCfg]
 }
-
 @main
 case class SparkStreamingCopyCfg(
     sparkCopy: SparkCopyCfg,

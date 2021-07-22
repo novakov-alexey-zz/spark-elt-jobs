@@ -8,7 +8,16 @@ ThisBuild / organization := "io.github.novakov-alexey"
 ThisBuild / organizationName := "novakov-alexey"
 
 lazy val root = (project in file("."))
-  .aggregate(sparkJobs, hadoopJobs, common, awsLambda, glueJobs, glueScripts)
+  .aggregate(
+    sparkJobs,
+    hadoopJobs,
+    common,
+    awsLambda,
+    glueJobs,
+    glueScripts,
+    emrJobs,
+    sparkCommon
+  )
   .settings(
     assembleArtifact := false
   )
@@ -22,8 +31,18 @@ lazy val sparkLocalCmd = s"""
         .getOrCreate()
     """.stripMargin
 
-lazy val sparkJobs = (project in file("./modules/sparkjobs"))
+lazy val sparkCommon = (project in file("./modules/sparkcommon"))
   .dependsOn(common)
+  .settings(
+    name := "etl-spark-common",
+    libraryDependencies ++= Seq(
+      sparkSql % Provided
+    ),
+    assembleArtifact := false
+  )
+
+lazy val sparkJobs = (project in file("./modules/sparkjobs"))
+  .dependsOn(sparkCommon)
   .settings(
     name := "etl-spark-jobs",
     libraryDependencies ++= Seq(
@@ -105,8 +124,8 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
       case x =>
         val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
         oldStrategy(x)
-    } ,
-      console / initialCommands := sparkLocalCmd,
+    },
+    console / initialCommands := sparkLocalCmd,
     console / cleanupCommands := "spark.close",
     Compile / run := Defaults
       .runTask(
@@ -167,3 +186,32 @@ lazy val glueScripts = (project in file("./modules/gluescripts"))
     )
   )
   .enablePlugins(S3Plugin)
+
+lazy val emrJobs = (project in file("./modules/emrjobs"))
+  .dependsOn(sparkCommon)
+  .settings(
+    name := "etl-emr-jobs",
+    assemblyPackageScala / assembleArtifact := false,
+    assemblyMergeStrategy := {
+      case PathList("org", "apache", xs @ _*)
+        if xs.headOption.exists(_.startsWith("http")) =>
+        MergeStrategy.first
+      case PathList(ps @ _*) if ps.last endsWith "public-suffix-list.txt" =>
+        MergeStrategy.concat
+      case x =>
+        val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+        oldStrategy(x)
+    },
+    libraryDependencies ++= Seq(
+      sparkSql % Provided,
+      emrHudiSparkBundle// % Provided
+    ) ++ sparkHadoopS3Dependencies, //.map(_ % Provided),
+    s3Upload / mappings := Seq(
+      (
+        target.value / "scala-2.12" / "etl-emr-jobs-assembly-0.1.0-SNAPSHOT.jar",
+        "etl-emr-jobs-assembly-0.1.0-SNAPSHOT.jar"
+      )
+    ),
+    s3Upload / s3Progress := true,
+    s3Upload / s3Host := "emr-extra-jars-etljobs",
+  ).enablePlugins(S3Plugin)

@@ -1,38 +1,38 @@
-package etljobs.spark
+package etljobs.sparkcommon
 
 import etljobs.common.FsUtil._
 import etljobs.common.{EntityPattern, FileCopyCfg, SparkOption}
-
 import org.apache.hadoop.conf.Configuration
-import org.apache.spark.sql.types.DataType
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.SparkSession
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.functions.lit
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
+import org.apache.spark.sql.types.{DataType, StructType}
+import org.apache.spark.sql.{Column, SparkSession}
 
-import scala.io.Source
 import java.net.URI
-import java.time.format.DateTimeFormatter
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import scala.io.Source
+import org.apache.spark.sql.streaming.Trigger
 
 object common {
-  val SparkOptions = Map(
+  val SparkDeltaOptions = Map(
     "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension",
     "spark.sql.catalog.spark_catalog" -> "org.apache.spark.sql.delta.catalog.DeltaCatalog",
     "spark.databricks.delta.schema.autoMerge.enabled" -> "true"
   )
 
-  val DateFormatter = DateTimeFormatter.ofPattern("YYYY-MM-dd")
+  val DateFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("YYYY-MM-dd")
 
-  def dateLit(date: LocalDate) =
+  def dateLit(date: LocalDate): Column =
     lit(date.format(DateFormatter))
 
   def sparkWithConfig(
-      hadoopConfig: List[SparkOption]
+      hadoopConfig: List[SparkOption],
+      conf: Map[String, String] = SparkDeltaOptions
   ): SparkSession.Builder = {
     val hadoop = hadoopConfig.map(c => c.name -> c.value).toMap
-    (hadoop ++ SparkOptions).foldLeft(SparkSession.builder) {
+    (hadoop ++ conf).foldLeft(SparkSession.builder) {
       case (acc, (name, value)) =>
         acc.config(name, value)
     }
@@ -91,4 +91,8 @@ object common {
     val input = getInPath(fileCopy)
     (input, output)
   }
+
+  def getTrigger(interval: Long) =
+    if (interval < 0) Trigger.Once
+    else Trigger.ProcessingTime(interval)
 }

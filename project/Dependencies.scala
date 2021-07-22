@@ -33,7 +33,10 @@ object Dependencies {
   lazy val sparkAvro = "org.apache.spark" %% "spark-avro" % glueSparkVer
   lazy val httpClient = "org.apache.httpcomponents" % "httpclient" % "4.5.13"
 
-  // Hadoop Dependencies
+  // EMR: Hudi Deps
+  lazy val emrHudiSparkBundle = "org.apache.hudi" %% "hudi-spark-bundle" % "0.7.0"
+
+  // Apache Spark - Hadoop Dependencies
   lazy val HadoopVer = "3.2.0"
   lazy val sparkHadoopS3Dependencies: Seq[sbt.ModuleID] = hadoopS3Dependencies(HadoopVer)
   lazy val hadoopCommon = "org.apache.hadoop" % "hadoop-common" % HadoopVer

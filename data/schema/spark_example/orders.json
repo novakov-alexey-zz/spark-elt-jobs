@@ -42,6 +42,30 @@
       "type": "integer",
       "nullable": false,
       "metadata": {}
+    },
+    {
+      "name": "last_update_time",
+      "type": "long",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "execution_year",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "execution_month",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
+    },
+    {
+      "name": "execution_day",
+      "type": "integer",
+      "nullable": false,
+      "metadata": {}
     }
   ]
 }

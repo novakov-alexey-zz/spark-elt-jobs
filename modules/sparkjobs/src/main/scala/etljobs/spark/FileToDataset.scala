@@ -1,8 +1,9 @@
 package etljobs.spark
 
 import etljobs.common.{EntityPattern, SparkOption}
-import etljobs.spark.DataFormat._
-import etljobs.spark.common._
+import etljobs.sparkcommon.DataFormat._
+import etljobs.sparkcommon.SparkCopyCfg
+import etljobs.sparkcommon.common._
 import io.delta.tables._
 import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.functions.{dayofmonth, month, year}

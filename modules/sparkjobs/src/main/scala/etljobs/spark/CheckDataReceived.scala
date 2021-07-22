@@ -1,12 +1,11 @@
 package etljobs.spark
 
 import etljobs.common.{ContextCfg, SparkOption}
-import etljobs.spark.common.{sparkWithConfig, useResource}
+import etljobs.sparkcommon.common.{sparkWithConfig, useResource}
+import etljobs.sparkcommon._
 import etljobs.common.MainArgsUtil._
-
-import org.apache.spark.sql.functions.{lit, col}
-import mainargs.{main, arg, ParserForMethods, ParserForClass}
-import DataFormat._
+import mainargs.{ParserForClass, ParserForMethods, arg, main}
+import org.apache.spark.sql.functions.{col, lit}
 
 import java.net.URI
 
@@ -35,16 +34,17 @@ case class CheckDataCfg(
 )
 
 object CheckDataCfg {
-  implicit def checkDataCfgParser = ParserForClass[CheckDataCfg]
+  implicit def checkDataCfgParser: ParserForClass[CheckDataCfg] =
+    ParserForClass[CheckDataCfg]
 }
 
-object CheckDataRecieved extends App {
+object CheckDataReceived extends App {
   val DataRecivedCode = 0
   val DataAbsentCode = 99
   val EntityColumn = "entity"
 
   @main
-  def run(cfg: CheckDataCfg) = {
+  def run(cfg: CheckDataCfg): Unit = {
     val sparkSession = sparkWithConfig(cfg.hadoopConfig).getOrCreate()
     val stats = useResource(sparkSession) { spark =>
       import spark.implicits._

@@ -38,6 +38,7 @@ class SparkJobCfg(ArgList):
     move_files: bool = True
     stream_move_files: bool = False
     hadoop_options_prefix: Optional[str] = "spark.hadoop."
+    hudi_sync_to_hive: bool = False
 
     def to_arg_list(self) -> List[str]:
         args = ["-i",
@@ -77,6 +78,9 @@ class SparkJobCfg(ArgList):
 
         args += entity_patterns_to_args(self.entity_patterns)
 
+        if self.hudi_sync_to_hive:
+            args += ["--hudi-sync-to-hive"]
+
         return args
 
 
@@ -99,8 +103,25 @@ def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optio
     return spark_job(task_id, cfg, 'etljobs.spark.FileStreamToDataset', dag, skip_exit_code, track_driver)
 
 
+LOCAL_INPUT = "{{fromjson(connection.s3_local.extra)['inputPath']}}"
+LOCAL_DATAWAREHOUSE = "{{fromjson(connection.s3_local.extra)['dwPath']}}"
+
+SPARK_JOBS_JAR = "{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}"
+INPUT_SCHEMA = "{{fromjson(connection.input_schemas.extra)['path']}}"
+dag_schema_path = INPUT_SCHEMA + "/spark_example"
+
+entity_patterns = [
+    EntityPattern("items", "items", "itemId"),
+    EntityPattern("orders", "orders", "orderId"),
+    EntityPattern("customers", "customers", "customerId")
+]
+
+user_defined_macros = {
+    'connection': ConnectionGrabber(), 'fromjson': from_json}
+
+
 def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_code: Optional[int] = None,
-              track_driver: bool = True) -> BaseOperator:
+              track_driver: bool = True, application: str = SPARK_JOBS_JAR) -> BaseOperator:
     job_args = cfg.to_arg_list()
 
     return SparkSubmitReturnCode(
@@ -109,7 +130,7 @@ def spark_job(task_id: str, cfg: ArgList, main_class: str, dag: DAG, skip_exit_c
         task_id=task_id,
         conn_id='spark_default',
         java_class=main_class,
-        application=SPARK_JOBS_JAR,
+        application=application,
         application_args=job_args,
         total_executor_cores='2',
         executor_cores='1',
@@ -135,20 +156,3 @@ def hadoop_options() -> List[Tuple[str, str]]:
         ("fs.s3a.access.key", s3_conn.login),
         ("fs.s3a.secret.key", s3_conn.password)
     ]
-
-
-LOCAL_INPUT = "{{fromjson(connection.s3_local.extra)['inputPath']}}"
-LOCAL_DATAWAREHOUSE = "{{fromjson(connection.s3_local.extra)['dwPath']}}"
-
-SPARK_JOBS_JAR = "{{fromjson(connection.etl_jobs_spark_jar.extra)['path']}}"
-INPUT_SCHEMA = "{{fromjson(connection.input_schemas.extra)['path']}}"
-dag_schema_path = INPUT_SCHEMA + "/spark_example"
-
-entity_patterns = [
-    EntityPattern("items", "items", "itemId"),
-    EntityPattern("orders", "orders", "orderId"),
-    EntityPattern("customers", "customers", "customerId")
-]
-
-user_defined_macros = {
-    'connection': ConnectionGrabber(), 'fromjson': from_json}

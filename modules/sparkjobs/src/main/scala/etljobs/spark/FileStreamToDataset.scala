@@ -1,7 +1,8 @@
 package etljobs.spark
 
 import etljobs.common.{HadoopCfg, SparkOption}
-import etljobs.spark.common._
+import etljobs.sparkcommon.common._
+import etljobs.sparkcommon.{SparkCopyCfg, SparkStreamingCopyCfg}
 import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.functions.{dayofmonth, month, year}
 import org.apache.spark.sql.streaming.{
@@ -40,10 +41,6 @@ object FileStreamToDataset extends App {
         // SparkOption("spark.sql.streaming.fileSource.log.cleanupDelay", "1")
       )
     } else Nil
-
-  private def getTrigger(interval: Long) =
-    if (interval < 0) Trigger.Once
-    else Trigger.ProcessingTime(interval)
 
   private def addOptions(
       stream: DataStreamReader,
