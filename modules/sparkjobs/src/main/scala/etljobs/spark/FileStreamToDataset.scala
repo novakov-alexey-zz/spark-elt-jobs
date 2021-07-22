@@ -8,8 +8,7 @@ import org.apache.spark.sql.functions.{dayofmonth, month, year}
 import org.apache.spark.sql.streaming.{
   DataStreamReader,
   OutputMode,
-  StreamingQuery,
-  Trigger
+  StreamingQuery
 }
 
 import java.net.URI

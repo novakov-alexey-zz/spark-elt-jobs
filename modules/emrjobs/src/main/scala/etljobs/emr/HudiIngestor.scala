@@ -5,7 +5,12 @@ import etljobs.sparkcommon.SparkStreamingCopyCfg
 import etljobs.sparkcommon.common._
 import mainargs.{ParserForMethods, main}
 import org.apache.hudi.DataSourceWriteOptions._
-import org.apache.hudi.config.HoodieWriteConfig
+import org.apache.hudi.config.HoodieWriteConfig.{
+  DELETE_PARALLELISM,
+  INSERT_PARALLELISM,
+  TABLE_NAME,
+  UPSERT_PARALLELISM
+}
 import org.apache.hudi.hive.MultiPartKeysValueExtractor
 import org.apache.spark.sql.functions.{dayofmonth, month, year}
 import org.apache.spark.sql.streaming.OutputMode
@@ -60,8 +65,8 @@ object HudiIngestor extends App {
 
         val checkpointPath = new URI(s"$outputPath/_checkpoints")
         val partitionFields = cfg.sparkCopy.partitionBy.mkString(",")
-        val hudiOptions = Map[String, String](
-          HoodieWriteConfig.TABLE_NAME -> entity.name,
+        val hudiWriterOptions = Map[String, String](
+          TABLE_NAME -> entity.name,
           TABLE_TYPE_OPT_KEY -> "COPY_ON_WRITE",
           KEYGENERATOR_CLASS_OPT_KEY -> "org.apache.hudi.keygen.CustomKeyGenerator",
           PARTITIONPATH_FIELD_OPT_KEY -> cfg.sparkCopy.partitionBy
@@ -74,13 +79,16 @@ object HudiIngestor extends App {
           HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[
             MultiPartKeysValueExtractor
           ].getName,
-          HIVE_STYLE_PARTITIONING_OPT_KEY -> "true"
+          HIVE_STYLE_PARTITIONING_OPT_KEY -> "true",
+          INSERT_PARALLELISM -> "4",
+          UPSERT_PARALLELISM -> "4",
+          DELETE_PARALLELISM -> "4"
         ) ++ entity.dedupKey.fold(Map.empty[String, String])(key =>
           Map(RECORDKEY_FIELD_OPT_KEY -> key)
         )
         df.writeStream
           .option(OPERATION_OPT_KEY, UPSERT_OPERATION_OPT_VAL)
-          .options(hudiOptions)
+          .options(hudiWriterOptions)
           .outputMode(OutputMode.Append)
           .option("checkpointLocation", checkpointPath.toString)
           .partitionBy(cfg.sparkCopy.partitionBy: _*)
