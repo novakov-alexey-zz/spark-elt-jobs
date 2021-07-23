@@ -68,13 +68,13 @@ object CheckDataReceived extends App {
       stats
         .map(r => r.getAs[String](EntityColumn) -> r.getAs[Long]("count"))
         .toMap
-    val recieved = cfg.entities.forall(e => counts.getOrElse(e, 0L) > 0)
+    val received = cfg.entities.forall(e => counts.getOrElse(e, 0L) > 0)
     println(
-      s"All data recieved: $recieved, current counts: ${if (counts.isEmpty) "none"
+      s"All data received: $received, current counts: ${if (counts.isEmpty) "none"
       else counts}"
     )
 
-    val ec = if (recieved) DataRecivedCode else DataAbsentCode
+    val ec = if (received) DataRecivedCode else DataAbsentCode
     System.exit(ec)
   }
 

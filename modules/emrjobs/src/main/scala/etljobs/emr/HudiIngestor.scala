@@ -1,8 +1,8 @@
 package etljobs.emr
 
-import etljobs.common.HadoopCfg
-import etljobs.sparkcommon.SparkStreamingCopyCfg
+import etljobs.common.{EntityPattern, HadoopCfg}
 import etljobs.sparkcommon.common._
+import etljobs.sparkcommon.{SparkCopyCfg, SparkStreamingCopyCfg}
 import mainargs.{ParserForMethods, main}
 import org.apache.hudi.DataSourceWriteOptions._
 import org.apache.hudi.config.HoodieWriteConfig.{
@@ -64,31 +64,10 @@ object HudiIngestor extends App {
         println(s"output path: $outputPath")
 
         val checkpointPath = new URI(s"$outputPath/_checkpoints")
-        val partitionFields = cfg.sparkCopy.partitionBy.mkString(",")
-        val hudiWriterOptions = Map[String, String](
-          TABLE_NAME -> entity.name,
-          TABLE_TYPE_OPT_KEY -> "COPY_ON_WRITE",
-          KEYGENERATOR_CLASS_OPT_KEY -> "org.apache.hudi.keygen.CustomKeyGenerator",
-          PARTITIONPATH_FIELD_OPT_KEY -> cfg.sparkCopy.partitionBy
-            .map(_ + ":SIMPLE")
-            .mkString(","),
-          PRECOMBINE_FIELD_OPT_KEY -> "last_update_time",
-          HIVE_SYNC_ENABLED_OPT_KEY -> s"${cfg.sparkCopy.syncToHive.value}",
-          HIVE_TABLE_OPT_KEY -> entity.name,
-          HIVE_PARTITION_FIELDS_OPT_KEY -> partitionFields,
-          HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[
-            MultiPartKeysValueExtractor
-          ].getName,
-          HIVE_STYLE_PARTITIONING_OPT_KEY -> "true",
-          INSERT_PARALLELISM -> "4",
-          UPSERT_PARALLELISM -> "4",
-          DELETE_PARALLELISM -> "4"
-        ) ++ entity.dedupKey.fold(Map.empty[String, String])(key =>
-          Map(RECORDKEY_FIELD_OPT_KEY -> key)
-        )
+
         df.writeStream
           .option(OPERATION_OPT_KEY, UPSERT_OPERATION_OPT_VAL)
-          .options(hudiWriterOptions)
+          .options(hudiWriterOptions(cfg.sparkCopy, entity))
           .outputMode(OutputMode.Append)
           .option("checkpointLocation", checkpointPath.toString)
           .partitionBy(cfg.sparkCopy.partitionBy: _*)
@@ -100,6 +79,34 @@ object HudiIngestor extends App {
       queries.foreach(_.awaitTermination())
       println(s"all ${queries.length} streaming queries are terminated")
     }
+
+  }
+  private def hudiWriterOptions(
+      sparkCopy: SparkCopyCfg,
+      entity: EntityPattern
+  ) = {
+    val partitionFields = sparkCopy.partitionBy.mkString(",")
+    Map[String, String](
+      TABLE_NAME -> entity.name,
+      TABLE_TYPE_OPT_KEY -> "COPY_ON_WRITE",
+      KEYGENERATOR_CLASS_OPT_KEY -> "org.apache.hudi.keygen.CustomKeyGenerator",
+      PARTITIONPATH_FIELD_OPT_KEY -> sparkCopy.partitionBy
+        .map(_ + ":SIMPLE")
+        .mkString(","),
+      PRECOMBINE_FIELD_OPT_KEY -> "last_update_time",
+      HIVE_SYNC_ENABLED_OPT_KEY -> s"${sparkCopy.syncToHive.value}",
+      HIVE_TABLE_OPT_KEY -> entity.name,
+      HIVE_PARTITION_FIELDS_OPT_KEY -> partitionFields,
+      HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[
+        MultiPartKeysValueExtractor
+      ].getName,
+      HIVE_STYLE_PARTITIONING_OPT_KEY -> "true",
+      INSERT_PARALLELISM -> "4",
+      UPSERT_PARALLELISM -> "4",
+      DELETE_PARALLELISM -> "4"
+    ) ++ entity.dedupKey.fold(Map.empty[String, String])(key =>
+      Map(RECORDKEY_FIELD_OPT_KEY -> key)
+    )
   }
 
   ParserForMethods(this).runOrExit(args)

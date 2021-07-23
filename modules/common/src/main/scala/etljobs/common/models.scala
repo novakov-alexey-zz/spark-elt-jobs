@@ -1,15 +1,14 @@
 package etljobs.common
 
+import mainargs._
 import MainArgsUtil._
-
 import org.apache.hadoop.conf.Configuration
-import mainargs.{main, arg, ParserForClass, TokensReader, Flag}
 
-import java.time.LocalDate
 import java.net.URI
+import java.time.LocalDate
 
 object HadoopCfg {
-  def get(options: List[SparkOption]) =
+  def get(options: List[SparkOption]): Configuration =
     options.foldLeft(new Configuration) { case (acc, o) =>
       acc.set(o.name, o.value)
       acc
@@ -52,7 +51,8 @@ case class ContextCfg(
 )
 
 object ContextCfg {
-  implicit def contextCfgParser = ParserForClass[ContextCfg]
+  implicit def contextCfgParser: ParserForClass[ContextCfg] =
+    ParserForClass[ContextCfg]
 }
 
 object FileCopyCfg {
@@ -75,7 +75,8 @@ object FileCopyCfg {
         }
       )
 
-  implicit def cfgParser = ParserForClass[FileCopyCfg]
+  implicit def cfgParser: ParserForClass[FileCopyCfg] =
+    ParserForClass[FileCopyCfg]
 }
 
 @main
