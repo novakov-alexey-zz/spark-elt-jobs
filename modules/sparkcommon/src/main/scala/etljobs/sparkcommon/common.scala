@@ -66,7 +66,7 @@ object common {
       schemaPath: URI,
       entityName: String
   ): StructType = {
-    val fs = FileSystem.get(conf)
+    val fs = FileSystem.get(schemaPath, conf)
     val in = fs.open(new Path(s"$schemaPath/$entityName.json"))
     val jsonSchema = useResource(in) { stream =>
       Source
