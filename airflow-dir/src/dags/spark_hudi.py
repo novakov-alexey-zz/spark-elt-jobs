@@ -18,7 +18,7 @@ dag = DAG(
     max_active_runs=1)
 
 entity_patterns = [
-    EntityPattern("orders", "orders", "orderId"),
+    EntityPattern("orders", "orders", "orderId", "last_update_time"),
 ]
 
 cfg = SparkJobCfg(
@@ -30,7 +30,7 @@ cfg = SparkJobCfg(
     partition_by=["year", "month", "day"],
     input_schema_path=dag_schema_path,
     output_format="hudi",
-    trigger_interval=5000
+    trigger_interval=-1
 )
 JAR_PATH = "{{fromjson(connection.etl_jobs_emr_jar.extra)['path']}}"
 load_to_table = spark_job('load_to_table', cfg, 'etljobs.emr.HudiIngestor', dag, None, True, JAR_PATH)

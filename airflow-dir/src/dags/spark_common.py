@@ -13,6 +13,7 @@ class EntityPattern:
     name: str
     pattern: str
     dedup_key: Optional[str] = None
+    pre_combine_field: Optional[str] = None
 
 
 class ArgList:
@@ -39,6 +40,7 @@ class SparkJobCfg(ArgList):
     stream_move_files: bool = False
     hadoop_options_prefix: Optional[str] = "spark.hadoop."
     hudi_sync_to_hive: bool = False
+
 
     def to_arg_list(self) -> List[str]:
         args = ["-i",
@@ -87,9 +89,10 @@ class SparkJobCfg(ArgList):
 def entity_patterns_to_args(patterns: List[EntityPattern]) -> Generator[str, None, None]:
     for e in patterns:
         dedup_key = ("" if e.dedup_key is None else ":" + e.dedup_key)
+        pre_combine_field = ("" if e.pre_combine_field is None else ":" + e.pre_combine_field)
         pattern = e.name + ":" + e.pattern + "_*{{ ds }}.csv"
         yield "--entity-pattern"
-        yield pattern + dedup_key
+        yield pattern + dedup_key + pre_combine_field
 
 
 def hadoop_options_to_args(options: List[Tuple[str, str]], prefix: Optional[str] = None) -> Generator[str, None, None]:

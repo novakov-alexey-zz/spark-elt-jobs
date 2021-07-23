@@ -86,7 +86,7 @@ case class EntityPattern(
     name: String,
     globPattern: String,
     dedupKey: Option[String],
-    preCombineFields: Option[String]
+    preCombineField: Option[String]
 )
 
 @main
