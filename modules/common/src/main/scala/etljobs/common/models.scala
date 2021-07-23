@@ -1,7 +1,7 @@
 package etljobs.common
 
+import etljobs.common.MainArgsUtil._
 import mainargs._
-import MainArgsUtil._
 import org.apache.hadoop.conf.Configuration
 
 import java.net.URI
@@ -67,8 +67,10 @@ object FileCopyCfg {
           )
           val entity = strs.head.split(":").toList
           entity match {
-            case name :: pattern :: maybeDedupKey =>
-              Right(EntityPattern(name, pattern, maybeDedupKey.headOption))
+            case name :: pattern :: tail =>
+              Right(
+                EntityPattern(name, pattern, tail.headOption, tail.lastOption)
+              )
             case _ =>
               Left(s"entity pattern does not contain name and glob pattern")
           }
@@ -83,7 +85,8 @@ object FileCopyCfg {
 case class EntityPattern(
     name: String,
     globPattern: String,
-    dedupKey: Option[String]
+    dedupKey: Option[String],
+    preCombineFields: Option[String]
 )
 
 @main

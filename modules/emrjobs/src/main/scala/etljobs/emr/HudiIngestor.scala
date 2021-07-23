@@ -93,8 +93,11 @@ object HudiIngestor extends App {
       PARTITIONPATH_FIELD_OPT_KEY -> sparkCopy.partitionBy
         .map(_ + ":SIMPLE")
         .mkString(","),
-      PRECOMBINE_FIELD_OPT_KEY -> "last_update_time",
+      PRECOMBINE_FIELD_OPT_KEY -> entity.preCombineFields.getOrElse(
+        ""
+      ),
       HIVE_SYNC_ENABLED_OPT_KEY -> s"${sparkCopy.syncToHive.value}",
+      HIVE_DATABASE_OPT_KEY -> sparkCopy.syncDatabase.getOrElse("default"),
       HIVE_TABLE_OPT_KEY -> entity.name,
       HIVE_PARTITION_FIELDS_OPT_KEY -> partitionFields,
       HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[

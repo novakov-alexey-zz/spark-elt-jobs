@@ -79,7 +79,13 @@ case class SparkCopyCfg(
       doc =
         "If set, Spark will sync Hudi table to Hive"
     )
-    syncToHive: Flag
+    syncToHive: Flag,
+    @arg(
+      name = "sync-database",
+      doc =
+        "If set, Spark will sync Hudi table to Hive sync-database"
+    )
+    syncDatabase: Option[String]
 )
 
 object SparkCopyCfg {
