@@ -18,6 +18,17 @@ import org.apache.spark.sql.streaming.OutputMode
 import java.net.URI
 
 object HudiIngestor extends App {
+  val defaultHudiOptions = Map[String, String](
+    TABLE_TYPE_OPT_KEY -> "COPY_ON_WRITE",
+    KEYGENERATOR_CLASS_OPT_KEY -> "org.apache.hudi.keygen.CustomKeyGenerator",
+    HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[
+      MultiPartKeysValueExtractor
+    ].getName,
+    HIVE_STYLE_PARTITIONING_OPT_KEY -> "true",
+    INSERT_PARALLELISM -> "4",
+    UPSERT_PARALLELISM -> "4",
+    DELETE_PARALLELISM -> "4"
+  )
 
   @main
   def run(cfg: SparkStreamingCopyCfg): Unit = {
@@ -81,15 +92,13 @@ object HudiIngestor extends App {
     }
 
   }
+
   private def hudiWriterOptions(
       sparkCopy: SparkCopyCfg,
       entity: EntityPattern
-  ) = {
-    val partitionFields = sparkCopy.partitionBy.mkString(",")
+  ) =
     Map[String, String](
       TABLE_NAME -> entity.name,
-      TABLE_TYPE_OPT_KEY -> "COPY_ON_WRITE",
-      KEYGENERATOR_CLASS_OPT_KEY -> "org.apache.hudi.keygen.CustomKeyGenerator",
       PARTITIONPATH_FIELD_OPT_KEY -> sparkCopy.partitionBy
         .map(_ + ":SIMPLE")
         .mkString(","),
@@ -99,18 +108,10 @@ object HudiIngestor extends App {
       HIVE_SYNC_ENABLED_OPT_KEY -> s"${sparkCopy.syncToHive.value}",
       HIVE_DATABASE_OPT_KEY -> sparkCopy.syncDatabase.getOrElse("default"),
       HIVE_TABLE_OPT_KEY -> entity.name,
-      HIVE_PARTITION_FIELDS_OPT_KEY -> partitionFields,
-      HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[
-        MultiPartKeysValueExtractor
-      ].getName,
-      HIVE_STYLE_PARTITIONING_OPT_KEY -> "true",
-      INSERT_PARALLELISM -> "4",
-      UPSERT_PARALLELISM -> "4",
-      DELETE_PARALLELISM -> "4"
+      HIVE_PARTITION_FIELDS_OPT_KEY -> sparkCopy.partitionBy.mkString(",")
     ) ++ entity.dedupKey.fold(Map.empty[String, String])(key =>
       Map(RECORDKEY_FIELD_OPT_KEY -> key)
-    )
-  }
+    ) ++ defaultHudiOptions
 
   ParserForMethods(this).runOrExit(args)
 }
