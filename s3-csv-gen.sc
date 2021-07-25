@@ -79,7 +79,7 @@ def putFile(inBucket: Bucket, targetBucketFolder: String) = {
   println(records)
   val text = Order.csvHeader + "\n" + records
   val payload = text.getBytes("UTF-8")
-  val uri = s"$targetBucketFolder/${System.currentTimeMillis}"
+  val uri = s"$targetBucketFolder/orders_${System.currentTimeMillis}.csv"
   inBucket.putObject(uri, payload, new ObjectMetadata)
 }
 
