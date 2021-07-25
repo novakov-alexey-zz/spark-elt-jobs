@@ -8,7 +8,7 @@ import awscala._
 import s3._
 import com.amazonaws.services.s3.model.ObjectMetadata
 import java.util.Date
-import Order._ 
+import Order._
 
 implicit val s3Api = S3.at(Region.EU_CENTRAL_1)
 
@@ -34,14 +34,17 @@ case class Order(
 )
 
 object Order {
-  val orderIdGen = Gen.choose(1, 100)
+  val orderMax = 100000
+  val orderIdGen = Gen.choose(1, orderMax)
   val customerIdGen = Gen.choose(1, 100)
   val itemIdGen = Gen.choose(1, 1000)
   val quantityGen = Gen.choose(2, 20)
   val yearGen = Gen.const(2021)
-  val monthGen = Gen.choose(1, 12)
-  val dayGen = Gen.choose(1, 30)
-  val batchSizeGen = Gen.choose(10, 100)
+  val monthGen = Gen.choose(7, 7)
+  val dayMin = 20
+  val dayMax = 25
+  val dayGen = Gen.choose(dayMin, dayMax)
+  val batchSizeGen = Gen.choose(100, 400)
 
   val csvHeader =
     "orderId,customerId,itemId,quantity,year,month,day,last_update_time"
@@ -67,20 +70,24 @@ def genOrder =
     System.currentTimeMillis
   )
 
-def genCsvRecords: Gen[String] =
+def genRecords =
   for {
     size <- batchSizeGen
     events <- Gen.listOfN(size, genOrder)
-    dataBatch = events.map(_.toCSV).mkString("\n")
-  } yield dataBatch
+  } yield events
 
 def putFile(inBucket: Bucket, targetBucketFolder: String) = {
-  val records = genCsvRecords.sample.getOrElse("")
-  println(records)
-  val text = Order.csvHeader + "\n" + records
+  val records = genRecords.sample.getOrElse(Nil)
+  val text = Order.csvHeader + "\n" + records.map(_.toCSV).mkString("\n")
   val payload = text.getBytes("UTF-8")
   val uri = s"$targetBucketFolder/orders_${System.currentTimeMillis}.csv"
-  inBucket.putObject(uri, payload, new ObjectMetadata)
+  val meta = {
+    val om = new ObjectMetadata
+    om.setContentLength(payload.length)
+    om
+  }
+  inBucket.putObject(uri, payload, meta)
+  records
 }
 
 @main
@@ -105,10 +112,19 @@ def main(
       )
     )
 
+  var uniqueOrders = Set.empty[String]
+  var count = 0
+  val expectedCount = (dayMax - dayMin + 1) * orderMax
+
   Iterator
     .continually(putFile(inBucket, targetBucketFolder))
-    .takeWhile(_ => true)
-    .foreach { _ =>
+    .takeWhile(recs => uniqueOrders.size < expectedCount)
+    .foreach { recs =>
+      count += recs.length
+      uniqueOrders ++= recs.map(r => r.orderId + "_" + r.day).toSet
+      println(
+        s"sent unique current / unique expected / total records: ${uniqueOrders.size} / $expectedCount / $count"
+      )
       val currentSeconds = System.currentTimeMillis() / 1000
       if (currentSeconds % 60 == 0)
         println(s"New window at: ${new Date()}")
