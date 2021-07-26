@@ -118,16 +118,13 @@ def main(
 
   Iterator
     .continually(putFile(inBucket, targetBucketFolder))
-    .takeWhile(recs => uniqueOrders.size < expectedCount)
+    .takeWhile(_ => uniqueOrders.size < expectedCount)
     .foreach { recs =>
       count += recs.length
       uniqueOrders ++= recs.map(r => r.orderId + "_" + r.day).toSet
-      println(
-        s"sent unique current / unique expected / total records: ${uniqueOrders.size} / $expectedCount / $count"
+      print(
+        s"[${new Date()}] sent unique current / unique expected / total records: ${uniqueOrders.size} / $expectedCount / $count\r"
       )
-      val currentSeconds = System.currentTimeMillis() / 1000
-      if (currentSeconds % 60 == 0)
-        println(s"New window at: ${new Date()}")
       Thread.sleep(delay)
     }
 }
