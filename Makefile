@@ -6,8 +6,9 @@ export
 
 AIRFLOW_VERSION=2.1.0
 
-install:
+create-env:
 	python3 -m venv airflow && source airflow/bin/activate
+install:	
 	python3 -m pip install -r requirements.txt
 	
 create-admin:
