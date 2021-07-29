@@ -59,3 +59,6 @@ recreate-glue-job: delete-glue-job
     --stack-name glue-jobs \
     --template-body file://./cloud-formation/glue-jobs/file-to-file.yaml \
     --parameters ParameterKey=CFNIAMRoleName,ParameterValue=$(CFNIAMRoleName) ParameterKey=CFNExtraJars,ParameterValue=$(CFNExtraJars)
+
+upload-dags:
+	aws s3 cp airflow-dir/src/ s3://airflow-dags-etljobs/dags/ --recursive

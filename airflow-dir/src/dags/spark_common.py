@@ -41,7 +41,6 @@ class SparkJobCfg(ArgList):
     hadoop_options_prefix: Optional[str] = "spark.hadoop."
     hudi_sync_to_hive: bool = False
 
-
     def to_arg_list(self) -> List[str]:
         args = ["-i",
                 self.input_path,
@@ -89,7 +88,8 @@ class SparkJobCfg(ArgList):
 def entity_patterns_to_args(patterns: List[EntityPattern]) -> Generator[str, None, None]:
     for e in patterns:
         dedup_key = ("" if e.dedup_key is None else ":" + e.dedup_key)
-        pre_combine_field = ("" if e.pre_combine_field is None else ":" + e.pre_combine_field)
+        pre_combine_field = (
+            "" if e.pre_combine_field is None else ":" + e.pre_combine_field)
         pattern = e.name + ":" + e.pattern + "_*{{ ds }}.csv"
         yield "--entity-pattern"
         yield pattern + dedup_key + pre_combine_field
@@ -97,8 +97,9 @@ def entity_patterns_to_args(patterns: List[EntityPattern]) -> Generator[str, Non
 
 def hadoop_options_to_args(options: List[Tuple[str, str]], prefix: Optional[str] = None) -> Generator[str, None, None]:
     for name, value in options:
-        yield "--hadoop-config"
-        yield (prefix if prefix is not None else "") + name + ":" + value
+        if (name and value) is not None:
+            yield "--hadoop-config"
+            yield (prefix or '') + name + ":" + value
 
 
 def spark_stream_job(task_id: str, cfg: ArgList, dag: DAG, skip_exit_code: Optional[int] = None,
