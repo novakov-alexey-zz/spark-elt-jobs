@@ -97,7 +97,7 @@ def check_files_task(cfg: CheckFileCfg, dag: DAG) -> BaseOperator:
         task_id='check-file',
         bash_command="java -cp " + HADOOP_JOBS_JAR +
                      " etljobs.hadoop.CheckFileExists " + mk_string(cfg.to_arg_list()),
-        skip_exit_code=99,
+        # skip_exit_code=99,
         dag=dag
     )
 
