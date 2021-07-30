@@ -205,7 +205,7 @@ lazy val emrJobs = (project in file("./modules/emrjobs"))
     libraryDependencies ++= Seq(
       sparkSql % Provided,
       emrHudiSparkBundle// % Provided
-    ) ++ sparkHadoopS3Dependencies, //.map(_ % Provided),
+    ),//++ sparkHadoopS3Dependencies, //.map(_ % Provided),
     s3Upload / mappings := Seq(
       (
         target.value / "scala-2.12" / "etl-emr-jobs-assembly-0.1.0-SNAPSHOT.jar",

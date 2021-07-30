@@ -14,7 +14,7 @@ github
 airflow-dir/logs
 metastore_db
 derby.log
-execution-date.txt
+scripts/execution-date.txt
 .idea
 .ammonite
 private.env

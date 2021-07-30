@@ -108,7 +108,7 @@ case class FileCopyCfg(
     )
     processedDir: Option[URI],
     @arg(
-      doc = "Ovewrite destination files if they exist"
+      doc = "Overwrite destination files/table if they exist"
     )
     overwrite: Flag,
     @arg(

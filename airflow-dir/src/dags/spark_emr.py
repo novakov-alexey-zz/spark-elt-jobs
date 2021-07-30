@@ -1,8 +1,6 @@
 import itertools
 import time
 from airflow.contrib.operators.emr_add_steps_operator import EmrAddStepsOperator
-from airflow.contrib.operators.emr_create_job_flow_operator import EmrCreateJobFlowOperator
-from airflow.providers.amazon.aws.operators.emr_terminate_job_flow import EmrTerminateJobFlowOperator
 from airflow.contrib.sensors.emr_step_sensor import EmrStepSensor
 from dags.spark_common import user_defined_macros
 from datetime import timedelta
@@ -16,22 +14,29 @@ args = {
 }
 
 dag = DAG(
-    "spark_emr",
+    "spark_emr_hudi",
     schedule_interval=None,
     dagrun_timeout=timedelta(minutes=60),
     default_args=args,
     user_defined_macros=user_defined_macros,
     max_active_runs=1,
-    tags=["emr"])
+    tags=["emr", "hudi"])
 
-step_args = """
+
+def to_list(step_args: str) -> List[str]:
+    lines = step_args.strip().split("\n")
+    return list(itertools.chain(*map(lambda l: l.strip().split(" "), lines)))
+
+
+ingest_step_args = """
     spark-submit 
     --deploy-mode client 
     --conf spark.executor.cores=4 
     --conf spark.executor.memory=2g 
-    --name load_to_table 
+    --name load_to_tables 
     --class etljobs.emr.HudiIngestor {{fromjson(connection.s3_cloud.extra)["emrJarPath"]}}
     --entity-pattern orders:orders_*.csv:orderId:last_update_time
+    --entity-pattern items:items_*.csv:itemId:last_update_time
     -i {{fromjson(connection.s3_cloud.extra)["inputPath"]}} 
     -o {{fromjson(connection.s3_cloud.extra)["rawPath"]}} 
     --execution-date {{ds}}
@@ -44,22 +49,54 @@ step_args = """
     --reader-options header:true     
     --partition-by year 
     --partition-by month 
-    --partition-by day    
+    --partition-by day
+    --hudi-sync-to-hive
+    --sync-database poc    
 """
 
+join_step_args = to_list("""
+    spark-submit 
+    --deploy-mode client 
+    --conf spark.executor.cores=4 
+    --conf spark.executor.memory=2g 
+    --name join_tables 
+    --class etljobs.emr.TableJoin {{fromjson(connection.s3_cloud.extra)["emrJarPath"]}}
+    --table items         
+    --table orders    
+    --join-table joined         
+    -i {{fromjson(connection.s3_cloud.extra)["rawPath"]}}
+    -o {{fromjson(connection.s3_cloud.extra)["rawPath"]}}
+    --execution-date {{ds}}
+    -j cdc-orders         
+    --input-format hudi 
+    --output-format hudi         
+    --partition-by year 
+    --partition-by month 
+    --partition-by day    
+    --hudi-sync-to-hive
+    --sync-database poc
+    --overwrite
+""") + ["--sql-join",
+        "\"select orderId, customerId, o.itemId, quantity, o.year, o.month, o.day, o.last_update_time, o.execution_year, o.execution_month, o.execution_day, name, price from orders o, items i where o.itemId == i.itemId\""]
 
-def to_list(step_args: str) -> List[str]:
-    lines = step_args.strip().split("\n")
-    return list(itertools.chain(*map(lambda l: l.strip().split(" "), lines)))
-
-
-SPARK_STEPS = [
+ingest_data_step = [
     {
-        "Name": "Orders Ingestor",
+        "Name": "Data Ingestor",
         "ActionOnFailure": "CONTINUE",
         "HadoopJarStep": {
             "Jar": "command-runner.jar",
-            "Args": to_list(step_args),
+            "Args": to_list(ingest_step_args),
+        },
+    }
+]
+
+join_data_step = [
+    {
+        "Name": "Data Joiner",
+        "ActionOnFailure": "CONTINUE",
+        "HadoopJarStep": {
+            "Jar": "command-runner.jar",
+            "Args": join_step_args,
         },
     }
 ]
@@ -121,36 +158,56 @@ JOB_FLOW_OVERRIDES = {
     "LogUri": "{{fromjson(connection.s3_cloud.extra)['emrLogsPath']}}",
 }
 
-cluster_creator = EmrCreateJobFlowOperator(
-    task_id="create_job_flow",
-    job_flow_overrides=JOB_FLOW_OVERRIDES,
-    dag=dag
-)
+# cluster_creator = EmrCreateJobFlowOperator(
+#     task_id="create_job_flow",
+#     job_flow_overrides=JOB_FLOW_OVERRIDES,
+#     dag=dag
+# )
 
-step_adder = EmrAddStepsOperator(
-    task_id="add_steps",
-    job_flow_id="{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
+cluster_id = "{{ dag_run.conf['cluster_id'] }}"
+
+ingest_data = EmrAddStepsOperator(
+    task_id="ingest_data",
+    job_flow_id=cluster_id,  # "{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
     aws_conn_id="aws_default",
-    steps=SPARK_STEPS,
+    steps=ingest_data_step,
     dag=dag
 )
 
-step_checker = EmrStepSensor(
-    task_id="watch_step",
-    job_flow_id="{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
-    step_id="{{ task_instance.xcom_pull(task_ids='add_steps', key='return_value')[0] }}",
-    aws_conn_id="aws_default",
-    dag=dag
-)
-
-step_terminate_cluster = EmrTerminateJobFlowOperator(
-    task_id="terminate_cluster",
-    job_flow_id="{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
+wait_for_ingestor = EmrStepSensor(
+    task_id="watch_ingestor",
+    job_flow_id=cluster_id,  # "{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
+    step_id="{{ task_instance.xcom_pull(task_ids='ingest_data', key='return_value')[0] }}",
     aws_conn_id="aws_default",
     dag=dag
 )
 
-cluster_creator >> step_adder >> step_checker >> step_terminate_cluster
+join_data = EmrAddStepsOperator(
+    task_id="join_data",
+    job_flow_id=cluster_id,  # "{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
+    aws_conn_id="aws_default",
+    steps=join_data_step,
+    dag=dag
+)
+
+wait_for_joiner = EmrStepSensor(
+    task_id="watch_joiner",
+    job_flow_id=cluster_id,  # "{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
+    step_id="{{ task_instance.xcom_pull(task_ids='join_data', key='return_value')[0] }}",
+    aws_conn_id="aws_default",
+    dag=dag
+)
+
+# step_terminate_cluster = EmrTerminateJobFlowOperator(
+#     task_id="terminate_cluster",
+#     job_flow_id="{{ task_instance.xcom_pull(task_ids='create_job_flow', key='return_value') }}",
+#     aws_conn_id="aws_default",
+#     dag=dag
+# )
+
+# cluster_creator >> step_adder >> step_checker >> step_terminate_cluster
+ingest_data >> wait_for_ingestor >> join_data >> wait_for_joiner
+# join_data >> wait_for_joiner
 
 if __name__ == "__main__":
     dag.cli()

@@ -123,8 +123,5 @@ object FileToDataset extends App {
     }
   }
 
-  private def getSaveMode(overwrite: Boolean) =
-    if (overwrite) SaveMode.Overwrite else SaveMode.ErrorIfExists
-
   ParserForMethods(this).runOrExit(args)
 }

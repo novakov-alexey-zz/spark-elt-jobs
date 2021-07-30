@@ -1,6 +1,5 @@
 import java.time.format.DateTimeFormatter
 import java.time.LocalDateTime
-import scala.io.Source
 import scala.sys.process._
 
 val defaultDate = LocalDateTime.of(2021, 6, 21, 11, 2, 52)

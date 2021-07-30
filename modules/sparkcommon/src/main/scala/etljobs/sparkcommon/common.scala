@@ -6,7 +6,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.{DataType, StructType}
-import org.apache.spark.sql.{Column, SparkSession}
+import org.apache.spark.sql.{Column, SaveMode, SparkSession}
 
 import java.net.URI
 import java.time.LocalDate
@@ -95,4 +95,7 @@ object common {
   def getTrigger(interval: Long) =
     if (interval < 0) Trigger.Once
     else Trigger.ProcessingTime(interval)
+
+  def getSaveMode(overwrite: Boolean) =
+    if (overwrite) SaveMode.Overwrite else SaveMode.ErrorIfExists
 }
