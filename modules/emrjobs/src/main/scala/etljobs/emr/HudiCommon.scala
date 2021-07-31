@@ -1,12 +1,7 @@
 package etljobs.emr
 
 import org.apache.hudi.DataSourceWriteOptions._
-import org.apache.hudi.config.HoodieWriteConfig.{
-  DELETE_PARALLELISM,
-  INSERT_PARALLELISM,
-  TABLE_NAME,
-  UPSERT_PARALLELISM
-}
+import org.apache.hudi.config.HoodieWriteConfig.{DELETE_PARALLELISM, INSERT_PARALLELISM, TABLE_NAME, UPSERT_PARALLELISM}
 import org.apache.hudi.hive.MultiPartKeysValueExtractor
 import org.apache.spark.sql.functions.{dayofmonth, month, year}
 import org.apache.spark.sql.{Column, DataFrame}
@@ -17,7 +12,7 @@ case class HudiWriterOptions(
     syncDatabase: Option[String],
     table: String,
     preCombineField: Option[String],
-    dedupKey: Option[String]
+    recordKey: Option[String]
 )
 
 object HudiCommon {
@@ -54,7 +49,7 @@ object HudiCommon {
       HIVE_DATABASE_OPT_KEY -> options.syncDatabase.getOrElse("default"),
       HIVE_TABLE_OPT_KEY -> options.table,
       HIVE_PARTITION_FIELDS_OPT_KEY -> options.partitionBy.mkString(",")
-    ) ++ options.dedupKey.fold(Map.empty[String, String])(key =>
+    ) ++ options.recordKey.fold(Map.empty[String, String])(key =>
       Map(RECORDKEY_FIELD_OPT_KEY -> key)
     ) ++ defaultHudiOptions
 

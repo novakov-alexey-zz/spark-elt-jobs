@@ -63,7 +63,7 @@ join_step_args = to_list("""
     --class etljobs.emr.TableJoin {{fromjson(connection.s3_cloud.extra)["emrJarPath"]}}
     --table items         
     --table orders    
-    --join-table joined         
+    --join-table joined:orderId:last_update_time         
     -i {{fromjson(connection.s3_cloud.extra)["rawPath"]}}
     -o {{fromjson(connection.s3_cloud.extra)["rawPath"]}}
     --execution-date {{ds}}
@@ -77,7 +77,7 @@ join_step_args = to_list("""
     --sync-database poc
     --overwrite
 """) + ["--sql-join",
-        "\"select orderId, customerId, o.itemId, quantity, o.year, o.month, o.day, o.last_update_time, o.execution_year, o.execution_month, o.execution_day, name, price from orders o, items i where o.itemId == i.itemId\""]
+        "\"select o.orderId, o.customerId, o.itemId, quantity, o.year, o.month, o.day, o.last_update_time, o.execution_year, o.execution_month, o.execution_day, i.name, i.price from orders o, items i where o.itemId == i.itemId\""]
 
 ingest_data_step = [
     {

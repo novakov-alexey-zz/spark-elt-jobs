@@ -15,6 +15,7 @@ airflow-dir/logs
 metastore_db
 derby.log
 scripts/execution-date.txt
+scripts/aws-execution-date.txt
 .idea
 .ammonite
 private.env
