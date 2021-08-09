@@ -15,7 +15,7 @@ args = {
 
 dag = DAG(
     "spark_emr_hudi",
-    schedule_interval=None,
+    schedule_interval=None, # or for example: '0/10 * * * * *'
     dagrun_timeout=timedelta(minutes=60),
     default_args=args,
     user_defined_macros=user_defined_macros,
@@ -205,9 +205,8 @@ wait_for_joiner = EmrStepSensor(
 #     dag=dag
 # )
 
-# cluster_creator >> step_adder >> step_checker >> step_terminate_cluster
 ingest_data >> wait_for_ingestor >> join_data >> wait_for_joiner
-# join_data >> wait_for_joiner
+# cluster_creator >> ingest_data >> wait_for_ingestor >> join_data >> wait_for_joiner >> step_terminate_cluster
 
 if __name__ == "__main__":
     dag.cli()
