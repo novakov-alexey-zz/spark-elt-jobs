@@ -1,7 +1,10 @@
 package etljobs.emr
 
 import org.apache.hudi.DataSourceWriteOptions._
-import org.apache.hudi.config.HoodieWriteConfig.{DELETE_PARALLELISM, INSERT_PARALLELISM, TABLE_NAME, UPSERT_PARALLELISM}
+import org.apache.hudi.config.HoodieWriteConfig.{
+  KEYGENERATOR_CLASS_NAME => _,
+  _
+}
 import org.apache.hudi.hive.MultiPartKeysValueExtractor
 import org.apache.spark.sql.functions.{dayofmonth, month, year}
 import org.apache.spark.sql.{Column, DataFrame}
@@ -17,16 +20,16 @@ case class HudiWriterOptions(
 
 object HudiCommon {
   val defaultHudiOptions = Map[String, String](
-    OPERATION_OPT_KEY -> UPSERT_OPERATION_OPT_VAL,
-    TABLE_TYPE_OPT_KEY -> "COPY_ON_WRITE",
-    KEYGENERATOR_CLASS_OPT_KEY -> "org.apache.hudi.keygen.CustomKeyGenerator",
-    HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[
+    OPERATION.key() -> UPSERT_OPERATION_OPT_VAL,
+    TABLE_TYPE.key() -> "COPY_ON_WRITE",
+    KEYGENERATOR_CLASS_NAME.key() -> "org.apache.hudi.keygen.CustomKeyGenerator",
+    HIVE_PARTITION_EXTRACTOR_CLASS.key() -> classOf[
       MultiPartKeysValueExtractor
     ].getName,
-    HIVE_STYLE_PARTITIONING_OPT_KEY -> "true",
-    INSERT_PARALLELISM -> "4",
-    UPSERT_PARALLELISM -> "4",
-    DELETE_PARALLELISM -> "4"
+    HIVE_STYLE_PARTITIONING.key() -> "true",
+    INSERT_PARALLELISM_VALUE.key() -> "4",
+    UPSERT_PARALLELISM_VALUE.key() -> "4",
+    DELETE_PARALLELISM_VALUE.key() -> "4"
   )
 
   val conf = Map(
@@ -38,19 +41,19 @@ object HudiCommon {
       options: HudiWriterOptions
   ): Map[String, String] =
     Map[String, String](
-      TABLE_NAME -> options.table,
-      PARTITIONPATH_FIELD_OPT_KEY -> options.partitionBy
+      TBL_NAME.key() -> options.table,
+      PARTITIONPATH_FIELD.key() -> options.partitionBy
         .map(_ + ":SIMPLE")
         .mkString(","),
-      PRECOMBINE_FIELD_OPT_KEY -> options.preCombineField.getOrElse(
+      PRECOMBINE_FIELD.key() -> options.preCombineField.getOrElse(
         ""
       ),
-      HIVE_SYNC_ENABLED_OPT_KEY -> s"${options.syncToHive}",
-      HIVE_DATABASE_OPT_KEY -> options.syncDatabase.getOrElse("default"),
-      HIVE_TABLE_OPT_KEY -> options.table,
-      HIVE_PARTITION_FIELDS_OPT_KEY -> options.partitionBy.mkString(",")
+      HIVE_SYNC_ENABLED.key() -> s"${options.syncToHive}",
+      HIVE_DATABASE.key() -> options.syncDatabase.getOrElse("default"),
+      HIVE_TABLE.key() -> options.table,
+      HIVE_PARTITION_FIELDS.key() -> options.partitionBy.mkString(",")
     ) ++ options.recordKey.fold(Map.empty[String, String])(key =>
-      Map(RECORDKEY_FIELD_OPT_KEY -> key)
+      Map(RECORDKEY_FIELD.key() -> key)
     ) ++ defaultHudiOptions
 
   def addColumns(df: DataFrame, executionDateCol: Column) =

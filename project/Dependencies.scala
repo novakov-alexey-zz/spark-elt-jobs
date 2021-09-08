@@ -29,12 +29,12 @@ object Dependencies {
   lazy val glueHadoopCommon =
     "org.apache.hadoop" % "hadoop-common" % glueHadoopVer
   // Glue: Hudi Deps
-  lazy val hudiSparkBundle = "org.apache.hudi" %% "hudi-spark-bundle" % "0.8.0"
+  lazy val hudiSparkBundle = "org.apache.hudi" %% "hudi-spark3-bundle" % "0.9.0"
   lazy val sparkAvro = "org.apache.spark" %% "spark-avro" % glueSparkVer
   lazy val httpClient = "org.apache.httpcomponents" % "httpclient" % "4.5.13"
 
   // EMR: Hudi Deps
-  lazy val emrHudiSparkBundle = "org.apache.hudi" %% "hudi-spark-bundle" % "0.7.0"
+  lazy val emrHudiSparkBundle = "org.apache.hudi" %% "hudi-spark-bundle" % "0.9.0"
 
   // Apache Spark - Hadoop Dependencies
   lazy val HadoopVer = "3.2.0"
