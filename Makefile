@@ -62,3 +62,9 @@ recreate-glue-job: delete-glue-job
 
 upload-dags:
 	aws s3 cp airflow-dir/src/ s3://airflow-dags-etljobs/dags/ --recursive
+
+create-mwaa-env:
+	aws cloudformation create-stack --stack-name mwaa-environment-public-network --template-body file://cloud-formation/airflow-vpc-env/cfn-vpc-public-private.yaml
+
+decode-aws-error:
+	aws sts decode-authorization-message --encoded-message $(ENCODED_MESSAGE) --query DecodedMessage --output text

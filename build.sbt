@@ -143,7 +143,7 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     s3Upload / s3Progress := true,
     s3Upload / s3Host := "glue-extra-jars-etljobs",
     libraryDependencies ++= Seq(
-      hudiSparkBundle % Provided,
+      "org.apache.hudi" %% "hudi-spark-bundle" % "0.8.0" % Provided,
       glueSpark % Provided,
       awsGlue % Provided,
       glueHadoopCommon % Provided
