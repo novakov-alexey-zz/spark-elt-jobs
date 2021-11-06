@@ -36,7 +36,7 @@ docker-remove:
 create-fn:
 	aws lambda create-function \
 	--function-name file-2-file \
-	--role "arn:aws:iam::339364330848:role/Lambda2S3Bucket" \
+	--role "arn:aws:iam::365607777689:role/service-role/AWSGlueServiceRole-CrawlerOrders" \
 	--code S3Bucket=lambda-code-jars-etl,S3Key=lambda-assembly-0.1.0-SNAPSHOT.jar \
 	--runtime java11 \
 	--memory 512 \

@@ -110,12 +110,12 @@ lazy val awsLambda = (project in file("./modules/lambda"))
       circeCore,
       circeParser,
       circeGeneric
-    )
+    )    
   )
 
 lazy val glueJobs = (project in file("./modules/gluejobs"))
   .settings(
-    scalaVersion := "2.11.11",
+    scalaVersion := "2.12.14",
     name := "etl-glue-jobs",
     assemblyPackageScala / assembleArtifact := false,
     assemblyMergeStrategy := {
@@ -127,26 +127,18 @@ lazy val glueJobs = (project in file("./modules/gluejobs"))
     },
     console / initialCommands := sparkLocalCmd,
     console / cleanupCommands := "spark.close",
-    Compile / run := Defaults
-      .runTask(
-        Compile / fullClasspath,
-        Compile / run / mainClass,
-        Compile / run / runner
-      )
-      .evaluated,
     s3Upload / mappings := Seq(
       (
-        target.value / "scala-2.11" / "etl-glue-jobs-assembly-0.1.0-SNAPSHOT.jar",
-        "etl-glue-jobs-assembly-0.1.0-SNAPSHOT.jar"
+        target.value / "scala-2.12" / (assembly / assemblyJarName).value,
+        (assembly / assemblyJarName).value
       )
     ),
     s3Upload / s3Progress := true,
-    s3Upload / s3Host := "glue-extra-jars-etljobs",
+    s3Upload / s3Host := "glue-jars-etljobs",
     libraryDependencies ++= Seq(
-      "org.apache.hudi" %% "hudi-spark-bundle" % "0.8.0" % Provided,
-      glueSpark % Provided,
+      hudiSparkBundle % Provided,
       awsGlue % Provided,
-      glueHadoopCommon % Provided
+      hadoopCommon % Provided
     ) ++ sparkHadoopS3Dependencies.map(_ % Provided)
   )
   .enablePlugins(S3Plugin)
@@ -156,10 +148,9 @@ lazy val upload = taskKey[Unit]("compile and then upload to S3")
 lazy val glueScripts = (project in file("./modules/gluescripts"))
   .dependsOn(glueJobs)
   .settings(
-    scalaVersion := "2.11.11",
     name := "etl-glue-scripts",
     assembleArtifact := false,
-    s3Upload / s3Host := "glue-script-etljobs",
+    s3Upload / s3Host := "glue-scripts-etljobs",
     s3Upload / mappings := Seq(
       (
         new java.io.File(
@@ -181,7 +172,6 @@ lazy val glueScripts = (project in file("./modules/gluescripts"))
       )
       .value,
     libraryDependencies ++= Seq(
-      glueSpark % Provided,
       awsGlue % Provided
     )
   )
@@ -194,7 +184,7 @@ lazy val emrJobs = (project in file("./modules/emrjobs"))
     assemblyPackageScala / assembleArtifact := false,
     assemblyMergeStrategy := {
       case PathList("org", "apache", xs @ _*)
-        if xs.headOption.exists(_.startsWith("http")) =>
+          if xs.headOption.exists(_.startsWith("http")) =>
         MergeStrategy.first
       case PathList(ps @ _*) if ps.last endsWith "public-suffix-list.txt" =>
         MergeStrategy.concat
@@ -204,7 +194,7 @@ lazy val emrJobs = (project in file("./modules/emrjobs"))
     },
     libraryDependencies ++= Seq(
       sparkSql % Provided,
-      emrHudiSparkBundle// % Provided
+      emrHudiSparkBundle // % Provided
     ),
     s3Upload / mappings := Seq(
       (
@@ -213,5 +203,6 @@ lazy val emrJobs = (project in file("./modules/emrjobs"))
       )
     ),
     s3Upload / s3Progress := true,
-    s3Upload / s3Host := "emr-extra-jars-etljobs",
-  ).enablePlugins(S3Plugin)
+    s3Upload / s3Host := "emr-extra-jars-etljobs"
+  )
+  .enablePlugins(S3Plugin)

@@ -1,12 +1,12 @@
 package etljobs.glue
 
-
+import org.apache.hudi.DataSourceWriteOptions._
+import org.apache.hudi.config.HoodieWriteConfig._
+import org.apache.hudi.hive.MultiPartKeysValueExtractor
+import org.apache.hudi.keygen.constant.KeyGeneratorOptions._
 import org.apache.spark.sql.{SaveMode, SparkSession}
 
 import java.net.URI
-import org.apache.hudi.DataSourceWriteOptions._
-import org.apache.hudi.config.HoodieWriteConfig
-import org.apache.hudi.hive.MultiPartKeysValueExtractor
 
 object HudiDemo {
 
@@ -23,20 +23,22 @@ object HudiDemo {
     ).toDF("id", "creation_date", "last_update_time")
 
     val hudiOptions = Map[String, String](
-      HoodieWriteConfig.TABLE_NAME -> "my_hudi_table",
-      TABLE_TYPE_OPT_KEY -> "COPY_ON_WRITE",
-      RECORDKEY_FIELD_OPT_KEY -> "id",
-      PARTITIONPATH_FIELD_OPT_KEY -> "creation_date",
-      PRECOMBINE_FIELD_OPT_KEY -> "last_update_time",
-      HIVE_SYNC_ENABLED_OPT_KEY -> "true",
-      HIVE_TABLE_OPT_KEY -> "my_hudi_table",
-      HIVE_PARTITION_FIELDS_OPT_KEY -> "creation_date",
-      HIVE_PARTITION_EXTRACTOR_CLASS_OPT_KEY -> classOf[MultiPartKeysValueExtractor].getName
+      TBL_NAME.key() -> "my_hudi_table",
+      TABLE_TYPE.key() -> "COPY_ON_WRITE",
+      RECORDKEY_FIELD_NAME.key() -> "id",
+      PARTITIONPATH_FIELD_NAME.key() -> "creation_date",
+      PRECOMBINE_FIELD_NAME.key() -> "last_update_time",
+      HIVE_SYNC_ENABLED.key() -> "true",
+      HIVE_TABLE.key() -> "my_hudi_table",
+      HIVE_PARTITION_FIELDS.key() -> "creation_date",
+      HIVE_PARTITION_EXTRACTOR_CLASS.key() -> classOf[
+        MultiPartKeysValueExtractor
+      ].getName
     )
 
     inputDF.write
       .format("hudi")
-      .option(OPERATION_OPT_KEY, INSERT_OPERATION_OPT_VAL)
+      .option(OPERATION.key(), INSERT_OPERATION_OPT_VAL)
       .options(hudiOptions)
       .mode(SaveMode.Overwrite)
       .save(outputPath.toString)

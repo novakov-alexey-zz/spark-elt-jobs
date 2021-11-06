@@ -2,12 +2,12 @@ AWSTemplateFormatVersion: 2010-09-09
 Parameters:
   CFNJobName:
     Type: String
-    Default: S3-to-S3-streaming
+    Default: File-to-File
   CFNIAMRoleName:
     Type: String
   CFNScriptLocation:
     Type: String
-    Default: s3://glue-script-etljobs/FileToFile.scala
+    Default: s3://glue-scripts-etljobs/FileToFile.scala
   CFNExtraJars:
     Type: String
 Resources:
@@ -18,16 +18,16 @@ Resources:
       DefaultArguments:
         "--job-language": scala
         "--class": etljobs.scripts.FileToFile
-        "--TempDir": s3://glue-script-etljobs/temp
+        "--TempDir": s3://glue-scripts-etljobs/temp
         "--enable-continuous-cloudwatch-log": true
         "--extra-jars": !Ref CFNExtraJars
         "--job-bookmark-option": job-bookmark-disable
         "--enable-glue-datacatalog": ''
         "--iam-role": !Ref CFNIAMRoleName
         "--fs.s3a.endpoint": 's3.eu-central-1.amazonaws.com'
-        "--input-bucket": 's3a://input-data-etl'
-        "--output-bucket": 's3a://raw-data-etl'
-        "--schema-bucket": 's3a://input-data-etl/S3-to-S3-streaming/schema'
+        "--input-bucket": 's3a://input-data-etljobs'
+        "--output-bucket": 's3a://raw-data-etljobs'
+        "--schema-bucket": 's3a://schema-etljobs'
       MaxRetries: 0
       Description: Job created with CloudFormation
       Command:
@@ -36,5 +36,5 @@ Resources:
       AllocatedCapacity: 2
       ExecutionProperty:
         MaxConcurrentRuns: 1
-      GlueVersion: '2.0'
+      GlueVersion: '3.0'
       Name: !Ref CFNJobName
