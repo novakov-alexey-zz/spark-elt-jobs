@@ -20,3 +20,4 @@ scripts/aws-execution-date.txt
 .ammonite
 private.env
 .mypy_cache
+.scala-build
