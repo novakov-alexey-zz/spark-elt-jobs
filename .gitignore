@@ -10,6 +10,8 @@ metals.sbt
 data/input
 data/raw-data
 data/dw
+data/gen
+data/delta
 github
 airflow-dir/logs
 metastore_db

@@ -1,9 +1,6 @@
 .ONESHELL:
 .SHELL := /bin/bash
 
-include ./private.env
-export
-
 AIRFLOW_VERSION=2.1.0
 
 create-env:
@@ -68,3 +65,8 @@ create-mwaa-env:
 
 decode-aws-error:
 	aws sts decode-authorization-message --encoded-message $(ENCODED_MESSAGE) --query DecodedMessage --output text
+
+open-spark:
+	spark-shell --packages io.delta:delta-core_2.12:2.0.0 \
+		-c "spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension" \
+		-c "spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog"		

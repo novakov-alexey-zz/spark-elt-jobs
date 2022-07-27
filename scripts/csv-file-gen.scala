@@ -50,7 +50,7 @@ case class Order(
 )
 
 object Order:
-  val orderMax = 100000
+  val orderMax = 1000
   val orderIdGen = Gen.choose(1, orderMax)
   val customerIdGen = Gen.choose(1, 100)
 
